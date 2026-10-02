@@ -13,7 +13,7 @@ export class AuthService {
   private readonly userKey = 'cf_admin_user';
 
   private users: AdminUser[] = [
-    {id:1,name:'System Administrator',username:'superadmin',email:'admin@carbonfarm.local',role:'Super Admin',status:'Active'},
+    {id:1,name:'System Administrator',username:'admin',email:'admin@carbonfarm.local',role:'Super Admin',status:'Active'},
     {id:2,name:'Operations Manager',username:'operations',email:'operations@carbonfarm.local',role:'Operations Admin',status:'Active'},
     {id:3,name:'Finance Manager',username:'finance',email:'finance@carbonfarm.local',role:'Finance Admin',status:'Active'},
     {id:4,name:'Support Executive',username:'support',email:'support@carbonfarm.local',role:'Support Admin',status:'Active'},
@@ -29,8 +29,15 @@ export class AuthService {
   };
 
   login(username:string,password:string):boolean {
-    const user=this.users.find(x=>x.username===username.trim() && x.status==='Active');
-    if(user && password.trim()){localStorage.setItem(this.loginKey,'1');localStorage.setItem(this.userKey,JSON.stringify(user));return true;}
+    const input = (username || '').trim().toLowerCase();
+    const user = this.users.find(x =>
+      (x.username.toLowerCase() === input ||
+       x.email.toLowerCase() === input ||
+       (input === 'admin' && x.username.toLowerCase() === 'superadmin') ||
+       (input === 'superadmin' && x.username.toLowerCase() === 'admin')) &&
+      x.status === 'Active'
+    );
+    if(user && (password || '').trim()){localStorage.setItem(this.loginKey,'1');localStorage.setItem(this.userKey,JSON.stringify(user));return true;}
     return false;
   }
   isLoggedIn(){return localStorage.getItem(this.loginKey)==='1';}

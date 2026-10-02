@@ -1,1 +1,44 @@
-<div class="login"><div class="card"><div class="brand"><div class="mark">CF</div><div><b>Carbon<span>Farm</span></b><small>Admin Console</small></div></div><div class="head"><span>Administration</span><h1>Welcome Back</h1><p>Manage farmers, packages, payments and the carbon farming network.</p></div><div class="error" *ngIf="error">{{error}}</div><form (ngSubmit)="submit()"><label>User ID</label><input [(ngModel)]="u" name="u" required placeholder="Administrator ID"><label>Password</label><div class="pass"><input [type]="show?'text':'password'" [(ngModel)]="p" name="p" required placeholder="Password"><button type="button" (click)="show=!show">{{show?'Hide':'Show'}}</button></div><a class="forgot" href="#!">Forgot Password?</a><button>Login <span>→</span></button></form></div></div>
+<div class="login">
+  <div class="card">
+    <div class="brand">
+      <div class="mark">CF</div>
+      <div><b>Carbon<span>Farm</span></b><small>Admin Console</small></div>
+    </div>
+    <div class="head">
+      <span>Administration</span>
+      <h1>Welcome Back</h1>
+      <p>Manage farmers, packages, payments and the carbon farming network.</p>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-title">Quick Demo Login (Click to auto-fill):</div>
+      <div class="demo-chips">
+        <button type="button" class="demo-chip" (click)="fillDemo('admin')">
+          👤 <b>Super Admin</b> (admin)
+        </button>
+        <button type="button" class="demo-chip" (click)="fillDemo('operations')">
+          👤 <b>Operations</b> (operations)
+        </button>
+        <button type="button" class="demo-chip" (click)="fillDemo('finance')">
+          👤 <b>Finance</b> (finance)
+        </button>
+      </div>
+    </div>
+
+    <div class="error" *ngIf="error">{{error}}</div>
+
+    <form (ngSubmit)="submit()">
+      <label>User ID</label>
+      <input [(ngModel)]="u" name="u" required placeholder="admin or superadmin">
+
+      <label>Password</label>
+      <div class="pass">
+        <input [type]="show ? 'text' : 'password'" [(ngModel)]="p" name="p" required placeholder="Password (e.g. admin123)">
+        <button type="button" (click)="show = !show">{{show ? 'Hide' : 'Show'}}</button>
+      </div>
+
+      <a class="forgot" href="#!">Forgot Password?</a>
+      <button type="submit">Login <span>→</span></button>
+    </form>
+  </div>
+</div>
