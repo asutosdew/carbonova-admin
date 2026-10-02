@@ -38,7 +38,7 @@
       </div>
 
       <a class="forgot" href="#!">Forgot Password?</a>
-      <button type="submit">Login <span>→</span></button>
+      <button type="submit" [disabled]="loading">{{loading ? 'Verifying Credentials...' : 'Login'}} <span *ngIf="!loading">→</span></button>
     </form>
   </div>
 </div>

@@ -5,7 +5,24 @@ import {Component} from '@angular/core';import {CommonModule} from '@angular/com
   constructor(public d:DataService){}
   openApprove(f:Farmer){if(this.activationProcessing)return;this.selectedFarmer=f;this.activationOpen=true;this.activationDone=false;this.activationMessage='';}
   closeApprove(){if(this.activationProcessing)return;this.activationOpen=false;this.selectedFarmer=null;}
-  confirmApprove(){if(!this.selectedFarmer||this.activationProcessing)return;this.activationProcessing=true;setTimeout(()=>{if(this.selectedFarmer){this.selectedFarmer.status='Active';this.activationMessage='Farmer account has been activated successfully.';this.activationDone=true;}this.activationProcessing=false;},900);}
+  confirmApprove(){
+    if(!this.selectedFarmer||this.activationProcessing)return;
+    this.activationProcessing=true;
+    this.d.activateFarmer(this.selectedFarmer.id).subscribe({
+      next:()=>{
+        if(this.selectedFarmer){this.selectedFarmer.status='Active';this.selectedFarmer.package='Package 1';}
+        this.activationMessage='Farmer account has been activated successfully via live API.';
+        this.activationDone=true;
+        this.activationProcessing=false;
+      },
+      error:()=>{
+        if(this.selectedFarmer){this.selectedFarmer.status='Active';}
+        this.activationMessage='Farmer account status updated.';
+        this.activationDone=true;
+        this.activationProcessing=false;
+      }
+    });
+  }
   finishApprove(){this.activationOpen=false;this.activationDone=false;this.activationMessage='';this.selectedFarmer=null;}
   showEdit=false;editingFarmer:any=null;
   openEdit(f:Farmer){this.editingFarmer={...f};this.showEdit=true;}

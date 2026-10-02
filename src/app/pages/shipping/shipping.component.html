@@ -1,64 +1,290 @@
-<app-page-header eyebrow="Fulfilment" title="Shipping Management" description="Manage selected products, shipping details and delivery status for activated farmers."/>
-<div class="summary-grid"><div><span>Pending Shipping</span><b>{{pendingCount}}</b></div><div><span>Total Shipments</span><b>{{shipments.length}}</b></div><div><span>Shipped</span><b>{{shippedCount}}</b></div><div><span>Delivered</span><b>{{deliveredCount}}</b></div></div>
-<div class="shipping-print-actions">
-  <div>
-    <strong>Print Documents</strong>
-    <span>Select a shipment below and print its shipping label or invoice.</span>
+<app-page-header
+  eyebrow="Fulfilment &amp; Logistics"
+  title="Customer Orders &amp; Shipping"
+  description="Manage customer plant deliveries, track package plant kit selections, process courier dispatches and audit reward points.">
+</app-page-header>
+
+<div class="stats-row">
+  <div class="stat-box">
+    <span>Total Orders</span>
+    <strong>{{d.orders.length}}</strong>
+    <small>All categories</small>
   </div>
-  <div class="print-help">Print buttons are also available on each shipment row.</div>
+  <div class="stat-box">
+    <span>Total Order Value</span>
+    <strong class="text-primary">₹{{totalRevenue | number}}</strong>
+    <small>Revenue processed</small>
+  </div>
+  <div class="stat-box">
+    <span>Reward Points</span>
+    <strong class="text-gold">★ {{totalRewardPointsDistributed | number}}</strong>
+    <small>Awarded to customers</small>
+  </div>
+  <div class="stat-box">
+    <span>Pending Fulfilment</span>
+    <strong class="text-warning">{{pendingCount}}</strong>
+    <small>Require packaging</small>
+  </div>
+  <div class="stat-box">
+    <span>In Transit</span>
+    <strong class="text-info">{{shippedCount}}</strong>
+    <small>Shipped with tracking</small>
+  </div>
+  <div class="stat-box">
+    <span>Delivered</span>
+    <strong class="text-success">{{deliveredCount}}</strong>
+    <small>Completed orders</small>
+  </div>
 </div>
 
-<div class="tabs"><button [class.active]="tab==='pending'" (click)="changeTab('pending')">Pending Shipping</button><button [class.active]="tab==='all'" (click)="changeTab('all')">All Shipments</button><select [(ngModel)]="status" (change)="page=1"><option>All</option><option>Pending</option><option>Packed</option><option>Shipped</option><option>Delivered</option><option>On Hold</option></select></div>
-<section class="panel"><div class="table"><table><thead><tr><th>Farmer</th><th>Selected Products</th><th>Qty</th><th>Shipping Address</th><th>Shipping Mode</th><th>Status</th><th>Tracking</th><th>Print</th><th>Action</th></tr></thead><tbody><tr *ngFor="let s of filtered"><td><b>{{s.farmer}}</b><small>{{s.userId}} · {{s.mobile}}</small></td><td><b>{{s.product}}</b><button type="button" class="link-btn" (click)="openShipmentProducts(s)">View / Edit Products</button></td><td>{{s.qty}}</td><td>{{s.address}}, {{s.city}}, {{s.state}} - {{s.pincode}}</td><td><span class="mode">{{s.shippingMode || 'Not Set'}}</span><button type="button" class="link-btn" (click)="openShippingMode(s)">Set Mode</button></td><td><em [class.pending]="s.status==='Pending'">{{s.status}}</em></td><td>{{s.tracking || '—'}}</td><td class="action-cell">
-              <button class="edit-btn" type="button" (click)="openEdit(s)">Edit / Update</button>
-              <button type="button" class="print-btn" (click)="printShippingLabel(s)">🏷 Print Label</button>
-              <button type="button" class="print-btn invoice-btn" (click)="printInvoice(s)">🧾 Print Invoice</button>
-            </td></tr><tr *ngIf="!filtered.length"><td colspan="9" class="empty">No shipping records found.</td></tr></tbody></table></div><app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination></section>
-<app-edit-modal *ngIf="showEdit" title="Update Shipping" [model]="editing" [fields]="[{key:'address',label:'Address'},{key:'city',label:'City'},{key:'state',label:'State'},{key:'pincode',label:'Pincode'},{key:'tracking',label:'Tracking Number'},{key:'status',label:'Shipping Status'}]" (saved)="saveEdit($event)" (closed)="closeEdit()"></app-edit-modal>
+<div class="controls-card">
+  <div class="status-tabs">
+    <button [class.active]="tab==='all'" (click)="changeTab('all')">All Orders ({{d.orders.length}})</button>
+    <button [class.active]="tab==='pending'" (click)="changeTab('pending')">Pending ({{pendingCount}})</button>
+    <button [class.active]="tab==='packed'" (click)="changeTab('packed')">Packed ({{packedCount}})</button>
+    <button [class.active]="tab==='shipped'" (click)="changeTab('shipped')">Shipped ({{shippedCount}})</button>
+    <button [class.active]="tab==='delivered'" (click)="changeTab('delivered')">Delivered ({{deliveredCount}})</button>
+  </div>
 
-<div class="shipping-overlay" *ngIf="showProducts">
-  <div class="shipping-modal products-modal">
-    <div class="modal-head"><div><span>PACKAGE CONTENT</span><h3>Selected Products</h3></div>
-      <button class="close-x" (click)="closeShipmentProducts()">×</button></div>
-    <div class="product-list">
-      <div class="product-row" *ngFor="let p of selectedShipmentProducts">
-        <div><strong>{{p.name}}</strong><small>SKU: {{p.sku || '—'}}</small></div>
-        <span>Qty: {{p.qty}}</span><span>{{p.total ? ('₹'+(p.total | number)) : '—'}}</span>
-        <button class="edit-btn" (click)="openProductEdit(p)">Edit</button>
+  <div class="filter-bar">
+    <div class="search-input">
+      <input type="search" [(ngModel)]="search" placeholder="Search order #, customer, mobile, city or tracking #...">
+    </div>
+    <div class="type-filter">
+      <select [(ngModel)]="orderTypeFilter">
+        <option value="ALL">All Order Types</option>
+        <option value="PACKAGE">Package Plant Kits Only</option>
+        <option value="DIRECT_PRODUCT">Direct Plant Purchases Only</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order # &amp; Date</th>
+          <th>Customer / Farmer</th>
+          <th>Order Type</th>
+          <th>Plants &amp; Products</th>
+          <th>Total Value</th>
+          <th>Reward Points</th>
+          <th>Shipping &amp; Tracking</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of pagedOrders">
+          <td>
+            <div class="order-cell">
+              <strong>{{o.order_number}}</strong>
+              <small>{{o.order_date}}</small>
+            </div>
+          </td>
+          <td>
+            <div class="customer-cell">
+              <b>{{o.customer_name}}</b>
+              <small>ID: {{o.userid}} • {{o.mobile}}</small>
+              <span class="city-tag">📍 {{o.city}}, {{o.state}}</span>
+            </div>
+          </td>
+          <td>
+            <span class="type-pill" [class.package]="o.order_type==='PACKAGE'" [class.direct]="o.order_type==='DIRECT_PRODUCT'">
+              {{o.order_type === 'PACKAGE' ? '📦 Package Kit' : '🛒 Standalone Plant'}}
+            </span>
+          </td>
+          <td>
+            <div class="items-cell" (click)="openOrderDetails(o)">
+              <div *ngFor="let item of (o.items || []).slice(0, 2)" class="mini-item">
+                • {{item.product_name}} <span class="qty">x{{item.quantity}}</span>
+              </div>
+              <small *ngIf="(o.items || []).length > 2" class="more-link">
+                +{{(o.items || []).length - 2}} more items...
+              </small>
+            </div>
+          </td>
+          <td class="amount-cell">
+            <strong>₹{{o.total_amount | number}}</strong>
+            <small>DP: ₹{{o.total_dp | number}}</small>
+          </td>
+          <td>
+            <span class="rp-chip">
+              ★ {{o.total_reward_points}} RP
+            </span>
+          </td>
+          <td>
+            <div class="shipping-cell">
+              <span class="mode-tag">{{o.shipping_mode}}</span>
+              <small *ngIf="o.courier_name">{{o.courier_name}}</small>
+              <code *ngIf="o.tracking_number">{{o.tracking_number}}</code>
+              <em *ngIf="!o.tracking_number" class="no-tracking">No Tracking Yet</em>
+            </div>
+          </td>
+          <td>
+            <span class="status-pill" [ngClass]="o.order_status.toLowerCase()">
+              {{o.order_status}}
+            </span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-process" (click)="openProcess(o)" title="Process shipment">
+                ⚙ Process
+              </button>
+              <button class="btn-print" (click)="printShippingLabel(o)" title="Print Shipping Label">
+                🏷 Label
+              </button>
+              <button class="btn-inv" (click)="printInvoice(o)" title="Print Tax Invoice">
+                📄 Invoice
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="!pagedOrders.length">
+          <td colspan="9" class="empty">No customer orders found matching your filters.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination
+    [page]="page"
+    [pageSize]="pageSize"
+    [total]="totalOrders"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+</section>
+
+<!-- Order Details Modal -->
+<div class="modal-overlay" *ngIf="showDetailsModal && selectedOrder">
+  <div class="modal large-modal">
+    <div class="modal-head">
+      <div>
+        <span>ORDER BREAKDOWN</span>
+        <h2>{{selectedOrder.order_number}} • {{selectedOrder.customer_name}}</h2>
+      </div>
+      <button class="close-btn" (click)="closeOrderDetails()">×</button>
+    </div>
+
+    <div class="order-summary-grid">
+      <div class="summary-card">
+        <label>Customer Details</label>
+        <b>{{selectedOrder.customer_name}} (User ID: {{selectedOrder.userid}})</b>
+        <div>📱 {{selectedOrder.mobile}}</div>
+      </div>
+      <div class="summary-card">
+        <label>Shipping Destination</label>
+        <div>{{selectedOrder.address}}</div>
+        <div>{{selectedOrder.city}}, {{selectedOrder.state}} - {{selectedOrder.pincode}}</div>
+      </div>
+      <div class="summary-card">
+        <label>Order Information</label>
+        <div>Type: <b>{{selectedOrder.order_type === 'PACKAGE' ? 'Package Plant Kit' : 'Direct Consumer Purchase'}}</b></div>
+        <div>Status: <span class="status-pill" [ngClass]="selectedOrder.order_status.toLowerCase()">{{selectedOrder.order_status}}</span></div>
+      </div>
+      <div class="summary-card">
+        <label>Points &amp; Financials</label>
+        <div class="gold-text"><b>★ {{selectedOrder.total_reward_points}} Reward Points Earned</b></div>
+        <div>Total Value: <b>₹{{selectedOrder.total_amount | number}}</b> (DP: ₹{{selectedOrder.total_dp | number}})</div>
       </div>
     </div>
-  </div>
-</div>
 
-<div class="shipping-overlay" *ngIf="showShippingMode">
-  <div class="shipping-modal">
-    <div class="modal-head"><div><span>FULFILMENT</span><h3>Set Shipping Mode</h3></div>
-      <button class="close-x" (click)="showShippingMode=false">×</button></div>
-    <label class="mode-field">Shipping Mode
-      <select [(ngModel)]="shippingMode">
-        <option *ngFor="let mode of shippingModes" [value]="mode">{{mode}}</option>
-      </select>
-    </label>
-    <div class="modal-footer">
-      <button class="modal-close" (click)="showShippingMode=false">Cancel</button>
-      <button class="modal-save" (click)="saveShippingMode()">Save Shipping Mode</button>
+    <h3 class="section-title">Enclosed Plants &amp; Line Items</h3>
+    <table class="modal-table">
+      <thead>
+        <tr>
+          <th>Plant / Product Name</th>
+          <th>Scientific Name</th>
+          <th style="text-align:center">Qty</th>
+          <th>Unit Price</th>
+          <th>Unit DP</th>
+          <th>Reward Points</th>
+          <th style="text-align:right">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let it of selectedOrder.items">
+          <td><b>{{it.product_name}}</b></td>
+          <td><small><em>{{it.scientific_name || '—'}}</em></small></td>
+          <td style="text-align:center"><span class="qty-pill">{{it.quantity}}</span></td>
+          <td>₹{{it.unit_price | number}}</td>
+          <td>₹{{it.unit_dp | number}}</td>
+          <td><span class="rp-chip">★ {{it.total_reward_points}} RP</span></td>
+          <td style="text-align:right"><b>₹{{it.total_price | number}}</b></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="modal-actions">
+      <button class="btn-print" (click)="printShippingLabel(selectedOrder)">🏷 Print Shipping Label</button>
+      <button class="btn-inv" (click)="printInvoice(selectedOrder)">📄 Print Invoice</button>
+      <button class="cancel-btn" (click)="closeOrderDetails()">Close</button>
     </div>
   </div>
 </div>
 
-<div class="shipping-overlay" *ngIf="showProductEdit">
-  <div class="shipping-modal">
-    <div class="modal-head"><div><span>PACKAGE PRODUCT</span><h3>Edit Selected Product</h3></div>
-      <button class="close-x" (click)="showProductEdit=false">×</button></div>
-    <div class="edit-grid">
-      <label>Product Name<input [(ngModel)]="editingProduct.name"></label>
-      <label>SKU<input [(ngModel)]="editingProduct.sku"></label>
-      <label>Quantity<input type="number" min="1" [(ngModel)]="editingProduct.qty"></label>
-      <label>Unit Price<input type="number" min="0" [(ngModel)]="editingProduct.unitPrice"></label>
+<!-- Process Shipment Modal -->
+<div class="modal-overlay" *ngIf="showProcessModal && selectedOrder">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <span>LOGISTICS &amp; FULFILMENT</span>
+        <h2>Process Order: {{selectedOrder.order_number}}</h2>
+      </div>
+      <button class="close-btn" (click)="closeProcess()">×</button>
     </div>
-    <div class="modal-footer">
-      <button class="modal-close" (click)="showProductEdit=false">Cancel</button>
-      <button class="modal-save" (click)="saveProductEdit()">Save Product</button>
+
+    <div class="process-form">
+      <div class="info-banner">
+        <span>Customer: <b>{{selectedOrder.customer_name}}</b> ({{selectedOrder.userid}})</span>
+        <span>Destination: <b>{{selectedOrder.city}}, {{selectedOrder.state}}</b> (Pin: {{selectedOrder.pincode}})</span>
+      </div>
+
+      <div class="form-row">
+        <label>
+          Fulfilment / Order Status *
+          <select [(ngModel)]="processForm.order_status">
+            <option value="PENDING">PENDING - Awaiting Packaging</option>
+            <option value="PACKED">PACKED - Ready for Courier</option>
+            <option value="SHIPPED">SHIPPED - Dispatched in Transit</option>
+            <option value="DELIVERED">DELIVERED - Confirmed Handover</option>
+          </select>
+        </label>
+
+        <label>
+          Shipping Mode
+          <select [(ngModel)]="processForm.shipping_mode">
+            <option *ngFor="let m of shippingModes" [value]="m">{{m}}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>
+          Courier / Logistics Partner
+          <select [(ngModel)]="processForm.courier_name">
+            <option *ngFor="let c of courierPartners" [value]="c">{{c}}</option>
+          </select>
+        </label>
+
+        <label>
+          Tracking Number / AWB Code
+          <input [(ngModel)]="processForm.tracking_number" placeholder="e.g. DTDC-99201458, SP-CG492001">
+        </label>
+      </div>
+
+      <label class="full-width">
+        Internal Logistics Notes
+        <textarea [(ngModel)]="processForm.notes" rows="3" placeholder="Package condition, plant carton count, dispatch gate..."></textarea>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="cancel-btn" (click)="closeProcess()">Cancel</button>
+      <button class="save-btn" (click)="saveProcess()">Save &amp; Update Shipping</button>
     </div>
   </div>
 </div>

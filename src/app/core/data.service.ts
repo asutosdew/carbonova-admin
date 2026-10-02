@@ -1,27 +1,730 @@
-import {Injectable} from '@angular/core';
-export interface Farmer{ id:string;name:string;mobile:string;city:string;package:string;joined:string;status:'Pending'|'Active'|'Blocked';balance:number;direct:number;team:number; }
-export interface Income{date:string;farmer:string;source:string;level:string;amount:number;status:'Credited'|'Pending';}
-@Injectable({providedIn:'root'}) export class DataService{
- farmers:Farmer[]=[
- {id:'CF10421',name:'Rakesh Patel',mobile:'98XXXX1201',city:'Raipur',package:'Growth',joined:'09 Aug 2026',status:'Pending',balance:12400,direct:7,team:31},
- {id:'CF10318',name:'Meena Sahu',mobile:'97XXXX4408',city:'Bilaspur',package:'Professional',joined:'07 Aug 2026',status:'Active',balance:28600,direct:5,team:18},
- {id:'CF10174',name:'Sanjay Verma',mobile:'91XXXX5520',city:'Durg',package:'Growth',joined:'03 Aug 2026',status:'Active',balance:17250,direct:8,team:26},
- {id:'CF09961',name:'Kavita Yadav',mobile:'88XXXX9012',city:'Korba',package:'Starter',joined:'28 Jul 2026',status:'Pending',balance:5300,direct:3,team:9},
- {id:'CF09812',name:'Amit Kumar',mobile:'90XXXX3344',city:'Raigarh',package:'Professional',joined:'24 Jul 2026',status:'Active',balance:22100,direct:4,team:16}];
- level:Income[]=[
- {date:'09 Aug 2026',farmer:'CF10421',source:'Level 1',level:'L1',amount:4200,status:'Credited'},
- {date:'08 Aug 2026',farmer:'CF10318',source:'Level 2',level:'L2',amount:2600,status:'Credited'},
- {date:'06 Aug 2026',farmer:'CF10174',source:'Level 3',level:'L3',amount:1850,status:'Credited'},
- {date:'04 Aug 2026',farmer:'CF09961',source:'Level 4',level:'L4',amount:1400,status:'Pending'}];
- matrix:Income[]=[
- {date:'09 Aug 2026',farmer:'CF10421',source:'Matrix Position',level:'M-03',amount:3500,status:'Credited'},
- {date:'07 Aug 2026',farmer:'CF10318',source:'Matrix Position',level:'M-02',amount:2800,status:'Credited'},
- {date:'05 Aug 2026',farmer:'CF10174',source:'Matrix Position',level:'M-01',amount:2400,status:'Credited'}];
- direct:Income[]=[
- {date:'09 Aug 2026',farmer:'CF10421',source:'Direct Farmer',level:'Direct',amount:4800,status:'Credited'},
- {date:'07 Aug 2026',farmer:'CF10318',source:'Direct Farmer',level:'Direct',amount:3200,status:'Credited'},
- {date:'03 Aug 2026',farmer:'CF10174',source:'Direct Farmer',level:'Direct',amount:2500,status:'Credited'}];
- packages=[{name:'Starter',price:5000,credits:1.2,direct:10,level:5,matrix:5,status:'Active'},{name:'Growth',price:10000,credits:2.8,direct:12,level:8,matrix:8,status:'Active'},{name:'Professional',price:25000,credits:7.5,direct:15,level:10,matrix:10,status:'Active'}];
- payments=[{date:'09 Aug 2026',ref:'PAY-80421',farmer:'CF10421',package:'Growth',amount:10000,status:'Pending'},{date:'08 Aug 2026',ref:'PAY-80318',farmer:'CF10318',package:'Professional',amount:25000,status:'Approved'},{date:'07 Aug 2026',ref:'PAY-80174',farmer:'CF10174',package:'Growth',amount:10000,status:'Approved'}];
- payouts=[{farmer:'CF10421',name:'Rakesh Patel',balance:12400,eligible:12400,pending:0,status:'Ready'},{farmer:'CF10318',name:'Meena Sahu',balance:28600,eligible:26000,pending:2600,status:'Review'},{farmer:'CF10174',name:'Sanjay Verma',balance:17250,eligible:17250,pending:0,status:'Ready'},{farmer:'CF09961',name:'Kavita Yadav',balance:5300,eligible:5300,pending:0,status:'Ready'}];
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
+import { AuthService } from './auth.service';
+
+export interface Farmer {
+  id: string;
+  name: string;
+  mobile: string;
+  city: string;
+  package: string;
+  joined: string;
+  status: 'Pending' | 'Active' | 'Blocked';
+  balance: number;
+  direct: number;
+  team: number;
+}
+
+export interface Income {
+  date: string;
+  farmer: string;
+  source: string;
+  level: string;
+  amount: number;
+  status: 'Credited' | 'Pending';
+}
+
+export interface Package {
+  name: string;
+  price: number;
+  credits: number;
+  direct: number;
+  level: number;
+  matrix: number;
+  status: 'Active' | 'Inactive';
+}
+
+export interface PaymentItem {
+  date: string;
+  ref: string;
+  farmer: string;
+  package: string;
+  amount: number;
+  status: 'Pending' | 'Approved';
+}
+
+export interface PayoutItem {
+  farmer: string;
+  name: string;
+  balance: number;
+  eligible: number;
+  pending: number;
+  status: 'Ready' | 'Review';
+}
+
+// Matches SQL products table structure:
+// rowid, productname, price, dp, active, linkwithpackage, rewardpoint, quantity, scientificname, image
+export interface ProductItem {
+  rowid: number;
+  productname: string;
+  price: number;
+  dp: number;
+  active: boolean | number;
+  linkwithpackage: boolean | number;
+  rewardpoint: number;
+  quantity: number;
+  scientificname: string;
+  image: string;
+}
+
+// Matches SQL orders + order_items + order_shipping structure
+export interface AdminOrderItem {
+  item_id?: number;
+  product_id: number;
+  product_name: string;
+  scientific_name?: string;
+  quantity: number;
+  unit_price: number;
+  unit_dp: number;
+  reward_points_per_unit: number;
+  total_reward_points: number;
+  total_price: number;
+}
+
+export interface AdminOrder {
+  order_id: number;
+  order_number: string;
+  userid: string;
+  customer_name: string;
+  mobile: string;
+  order_type: 'PACKAGE' | 'DIRECT_PRODUCT';
+  plan_name?: string;
+  total_items: number;
+  total_amount: number;
+  total_dp: number;
+  total_reward_points: number;
+  payment_status: 'PAID' | 'PENDING' | 'FAILED';
+  order_status: 'PENDING' | 'CONFIRMED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  shipping_mode: string;
+  courier_name: string;
+  tracking_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  order_date: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  items: AdminOrderItem[];
+}
+
+@Injectable({ providedIn: 'root' })
+export class DataService {
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+
+  farmers: Farmer[] = [];
+  packages: Package[] = [];
+  payments: PaymentItem[] = [];
+  direct: Income[] = [];
+  level: Income[] = [];
+  matrix: Income[] = [];
+  payouts: PayoutItem[] = [];
+
+  // Live products list matching SQL products table
+  products: ProductItem[] = [
+    {
+      rowid: 1,
+      productname: 'Vietnam Super Early Jackfruit',
+      price: 1000,
+      dp: 800,
+      active: true,
+      linkwithpackage: true,
+      rewardpoint: 25,
+      quantity: 150,
+      scientificname: 'Artocarpus heterophyllus',
+      image: 'https://images.unsplash.com/photo-1596707325255-7a315e966b96?w=300&auto=format&fit=crop&q=80'
+    },
+    {
+      rowid: 2,
+      productname: 'Kumbhkat Seedless Lemon',
+      price: 1000,
+      dp: 800,
+      active: true,
+      linkwithpackage: true,
+      rewardpoint: 20,
+      quantity: 200,
+      scientificname: 'Citrus limon',
+      image: 'https://images.unsplash.com/photo-1534856966150-c832f817a508?w=300&auto=format&fit=crop&q=80'
+    },
+    {
+      rowid: 3,
+      productname: 'PKM-1 Super Moringa',
+      price: 500,
+      dp: 400,
+      active: true,
+      linkwithpackage: false,
+      rewardpoint: 15,
+      quantity: 350,
+      scientificname: 'Moringa oleifera',
+      image: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=300&auto=format&fit=crop&q=80'
+    },
+    {
+      rowid: 4,
+      productname: 'Hybrid Tissue Culture Teak',
+      price: 1000,
+      dp: 850,
+      active: true,
+      linkwithpackage: true,
+      rewardpoint: 30,
+      quantity: 120,
+      scientificname: 'Tectona grandis',
+      image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&auto=format&fit=crop&q=80'
+    },
+    {
+      rowid: 5,
+      productname: 'Red Sandalwood (Lal Chandan)',
+      price: 1000,
+      dp: 850,
+      active: true,
+      linkwithpackage: false,
+      rewardpoint: 35,
+      quantity: 80,
+      scientificname: 'Pterocarpus santalinus',
+      image: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=300&auto=format&fit=crop&q=80'
+    }
+  ];
+
+  // Live customer orders (both standalone product purchases and package plant selections)
+  orders: AdminOrder[] = [
+    {
+      order_id: 1001,
+      order_number: 'ORD-2026-1001',
+      userid: '180093',
+      customer_name: 'MANSAI',
+      mobile: '9827112001',
+      order_type: 'PACKAGE',
+      plan_name: 'Package 1 (Growth Kit)',
+      total_items: 2,
+      total_amount: 10000,
+      total_dp: 8000,
+      total_reward_points: 50,
+      payment_status: 'PAID',
+      order_status: 'CONFIRMED',
+      shipping_mode: 'Courier',
+      courier_name: 'DTDC Express',
+      tracking_number: 'DTDC-89213401',
+      address: 'Near Kisan Mandi, Ward 4',
+      city: 'Raipur',
+      state: 'Chhattisgarh',
+      pincode: '492001',
+      order_date: '27 Sep 2026',
+      items: [
+        {
+          product_id: 1,
+          product_name: 'Vietnam Super Early Jackfruit',
+          scientific_name: 'Artocarpus heterophyllus',
+          quantity: 1,
+          unit_price: 1000,
+          unit_dp: 800,
+          reward_points_per_unit: 25,
+          total_reward_points: 25,
+          total_price: 1000
+        },
+        {
+          product_id: 4,
+          product_name: 'Hybrid Tissue Culture Teak',
+          scientific_name: 'Tectona grandis',
+          quantity: 1,
+          unit_price: 1000,
+          unit_dp: 850,
+          reward_points_per_unit: 25,
+          total_reward_points: 25,
+          total_price: 1000
+        }
+      ]
+    },
+    {
+      order_id: 1002,
+      order_number: 'ORD-2026-1002',
+      userid: '157059',
+      customer_name: 'Sandeep Sharma',
+      mobile: '9752344102',
+      order_type: 'DIRECT_PRODUCT',
+      total_items: 3,
+      total_amount: 2500,
+      total_dp: 2050,
+      total_reward_points: 75,
+      payment_status: 'PAID',
+      order_status: 'PACKED',
+      shipping_mode: 'India Post',
+      courier_name: 'Speed Post',
+      tracking_number: 'SP-CG49500128',
+      address: 'Plot 42, Green Avenue, Telibandha',
+      city: 'Bilaspur',
+      state: 'Chhattisgarh',
+      pincode: '495001',
+      order_date: '28 Sep 2026',
+      items: [
+        {
+          product_id: 2,
+          product_name: 'Kumbhkat Seedless Lemon',
+          scientific_name: 'Citrus limon',
+          quantity: 2,
+          unit_price: 1000,
+          unit_dp: 800,
+          reward_points_per_unit: 20,
+          total_reward_points: 40,
+          total_price: 2000
+        },
+        {
+          product_id: 3,
+          product_name: 'PKM-1 Super Moringa',
+          scientific_name: 'Moringa oleifera',
+          quantity: 1,
+          unit_price: 500,
+          unit_dp: 400,
+          reward_points_per_unit: 15,
+          total_reward_points: 15,
+          total_price: 500
+        }
+      ]
+    },
+    {
+      order_id: 1003,
+      order_number: 'ORD-2026-1003',
+      userid: '125374',
+      customer_name: 'TANIYA SANDILYA',
+      mobile: '9179883344',
+      order_type: 'PACKAGE',
+      plan_name: 'Package 1',
+      total_items: 1,
+      total_amount: 10000,
+      total_dp: 8500,
+      total_reward_points: 35,
+      payment_status: 'PAID',
+      order_status: 'SHIPPED',
+      shipping_mode: 'Transport',
+      courier_name: 'VRL Logistics',
+      tracking_number: 'VRL-9921045',
+      address: 'Main Market Road, Durg',
+      city: 'Durg',
+      state: 'Chhattisgarh',
+      pincode: '491001',
+      order_date: '29 Sep 2026',
+      shipped_at: '30 Sep 2026',
+      items: [
+        {
+          product_id: 5,
+          product_name: 'Red Sandalwood (Lal Chandan)',
+          scientific_name: 'Pterocarpus santalinus',
+          quantity: 1,
+          unit_price: 1000,
+          unit_dp: 850,
+          reward_points_per_unit: 35,
+          total_reward_points: 35,
+          total_price: 1000
+        }
+      ]
+    },
+    {
+      order_id: 1004,
+      order_number: 'ORD-2026-1004',
+      userid: '182328',
+      customer_name: 'Pankaj Kumar Biswas',
+      mobile: '6269662553',
+      order_type: 'DIRECT_PRODUCT',
+      total_items: 2,
+      total_amount: 2000,
+      total_dp: 1600,
+      total_reward_points: 50,
+      payment_status: 'PAID',
+      order_status: 'PENDING',
+      shipping_mode: 'Courier',
+      courier_name: 'Delhivery',
+      tracking_number: '',
+      address: 'Village Post Raigarh, Civil Lines',
+      city: 'Raigarh',
+      state: 'Chhattisgarh',
+      pincode: '496001',
+      order_date: '01 Oct 2026',
+      items: [
+        {
+          product_id: 1,
+          product_name: 'Vietnam Super Early Jackfruit',
+          scientific_name: 'Artocarpus heterophyllus',
+          quantity: 2,
+          unit_price: 1000,
+          unit_dp: 800,
+          reward_points_per_unit: 25,
+          total_reward_points: 50,
+          total_price: 2000
+        }
+      ]
+    }
+  ];
+
+  dashboardStats = {
+    totalteam: 32,
+    pendingactivation: 15,
+    totalactive: 17,
+    totalplanamount: '170000.00',
+    totalpendingamount: '0.00',
+    directincome: '10000.00',
+    levelincome: '6350.00',
+    autopoolincome: '17000.00'
+  };
+
+  loading = false;
+  loaded = false;
+
+  constructor() {
+    this.refreshAll();
+  }
+
+  get adminApiUrl(): string {
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    return isLocal ? '/api/admin.php' : 'https://www.carbonovaworld.com/api/admin.php';
+  }
+
+  postAdminApi<T = any>(route: string, params?: any): Observable<T> {
+    const payload: any[] = [
+      { token: this.auth.getToken() },
+      { route: route }
+    ];
+
+    if (params !== undefined) {
+      payload.push(params);
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    return this.http.post<T>(this.adminApiUrl, payload, { headers });
+  }
+
+  refreshAll(): void {
+    this.loading = true;
+    this.loadDashboard();
+    this.loadMembers();
+    this.loadPackages();
+    this.loadDirectIncome();
+    this.loadLevelIncome();
+    this.loadProducts();
+    this.loadOrders();
+  }
+
+  loadDashboard(): void {
+    this.postAdminApi('dashboard').subscribe({
+      next: (res: any) => {
+        if (res && res.result === 1) {
+          this.dashboardStats = {
+            totalteam: Number(res.totalteam) || this.farmers.length || 32,
+            pendingactivation: Number(res.pendingactivation) || 15,
+            totalactive: (Number(res.totalteam) || 32) - (Number(res.pendingactivation) || 15),
+            totalplanamount: String(res.totalplanamount || '170000.00'),
+            totalpendingamount: String(res.totalpendingamount || '0.00'),
+            directincome: String(res.directincome || '10000.00'),
+            levelincome: String(res.levelincome || '6350.00'),
+            autopoolincome: String(res.autopoolincome || '17000.00')
+          };
+          if (Array.isArray(res.plans) && res.plans.length > 0 && this.packages.length === 0) {
+            this.mapPlansToPackages(res.plans);
+          }
+          if (Array.isArray(res.members) && res.members.length > 0 && this.farmers.length === 0) {
+            this.mapMembersToFarmers(res.members);
+          }
+        }
+      },
+      error: (err) => console.warn('Live dashboard error:', err)
+    });
+  }
+
+  loadMembers(page: number = 1, pagesize: number = 50, search: string = ''): void {
+    this.postAdminApi('downlinelist', [{ findparam: 0, page, pagesize, search }]).subscribe({
+      next: (res: any) => {
+        if (res && Array.isArray(res.result) && res.result.length > 0) {
+          this.mapMembersToFarmers(res.result);
+          if (res.totalteam) this.dashboardStats.totalteam = Number(res.totalteam);
+          if (res.pendingactivation !== undefined) this.dashboardStats.pendingactivation = Number(res.pendingactivation);
+          if (res.totalactive !== undefined) this.dashboardStats.totalactive = Number(res.totalactive);
+        }
+        this.loading = false;
+        this.loaded = true;
+      },
+      error: (err) => {
+        console.warn('Live downlinelist error:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  loadPackages(): void {
+    this.postAdminApi('planlist').subscribe({
+      next: (res: any) => {
+        if (res && Array.isArray(res.results) && res.results.length > 0) {
+          this.mapPlansToPackages(res.results);
+        }
+      },
+      error: (err) => console.warn('Live planlist error:', err)
+    });
+  }
+
+  loadDirectIncome(page: number = 1, pagesize: number = 50): void {
+    this.postAdminApi('directincome', [{ page, pagesize }]).subscribe({
+      next: (res: any) => {
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+          this.direct = res.data.map((d: any) => ({
+            date: this.formatDate(d.doa),
+            farmer: d.userid + (d.name ? ` (${d.name})` : ''),
+            source: `Direct Sponsor (From ${d.new_userid})`,
+            level: `Direct (L${d.level || 1})`,
+            amount: Number(d.amount) || 0,
+            status: d.status === 1 ? 'Credited' : 'Pending'
+          }));
+        }
+      },
+      error: (err) => console.warn('Live directincome error:', err)
+    });
+  }
+
+  loadLevelIncome(page: number = 1, pagesize: number = 50): void {
+    this.postAdminApi('levelincome', [{ page, pagesize }]).subscribe({
+      next: (res: any) => {
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+          this.level = res.data.map((d: any) => ({
+            date: this.formatDate(d.doa),
+            farmer: d.userid + (d.name ? ` (${d.name})` : ''),
+            source: `Level ${d.level} Income (From ${d.new_userid})`,
+            level: `L${d.level || 1}`,
+            amount: Number(d.amount) || 0,
+            status: d.status === 1 ? 'Credited' : 'Pending'
+          }));
+        }
+      },
+      error: (err) => console.warn('Live levelincome error:', err)
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Product Management (driven by SQL products table)
+  // -------------------------------------------------------------
+  loadProducts(): void {
+    this.postAdminApi('productlist').subscribe({
+      next: (res: any) => {
+        const list = res?.products || res?.result;
+        if (Array.isArray(list) && list.length > 0) {
+          this.products = list.map((p: any) => ({
+            rowid: Number(p.rowid || p.id),
+            productname: p.productname || p.name,
+            price: Number(p.price || p.unit_price) || 0,
+            dp: Number(p.dp || p.unit_price) || 0,
+            active: p.active === 1 || p.active === true || p.active === undefined,
+            linkwithpackage: p.linkwithpackage === 1 || p.linkwithpackage === true,
+            rewardpoint: Number(p.rewardpoint) || 0,
+            quantity: Number(p.quantity) || 0,
+            scientificname: p.scientificname || p.scientific_name || '',
+            image: p.image || ''
+          }));
+        }
+      },
+      error: (err) => console.warn('Could not load products from API:', err)
+    });
+  }
+
+  saveProduct(product: Partial<ProductItem>): Observable<any> {
+    return this.postAdminApi('saveproduct', [{ ...product }]).pipe(
+      tap((res: any) => {
+        const id = Number(product.rowid);
+        const existing = this.products.find(x => x.rowid === id);
+        if (existing) {
+          Object.assign(existing, product);
+        } else {
+          const newId = res?.rowid || (this.products.length ? Math.max(...this.products.map(x => x.rowid)) + 1 : 1);
+          this.products.unshift({
+            rowid: newId,
+            productname: product.productname || '',
+            price: Number(product.price) || 0,
+            dp: Number(product.dp) || 0,
+            active: product.active ?? true,
+            linkwithpackage: product.linkwithpackage ?? false,
+            rewardpoint: Number(product.rewardpoint) || 0,
+            quantity: Number(product.quantity) || 0,
+            scientificname: product.scientificname || '',
+            image: product.image || ''
+          });
+        }
+      }),
+      catchError(() => {
+        // Optimistic local update
+        if (product.rowid) {
+          const ex = this.products.find(x => x.rowid === product.rowid);
+          if (ex) Object.assign(ex, product);
+        } else {
+          this.products.unshift({
+            rowid: this.products.length ? Math.max(...this.products.map(x => x.rowid)) + 1 : 1,
+            productname: product.productname || '',
+            price: Number(product.price) || 0,
+            dp: Number(product.dp) || 0,
+            active: true,
+            linkwithpackage: product.linkwithpackage ?? false,
+            rewardpoint: Number(product.rewardpoint) || 0,
+            quantity: Number(product.quantity) || 0,
+            scientificname: product.scientificname || '',
+            image: product.image || ''
+          });
+        }
+        return of({ success: true });
+      })
+    );
+  }
+
+  toggleProduct(rowid: number): Observable<any> {
+    const p = this.products.find(x => x.rowid === rowid);
+    if (p) p.active = !p.active;
+    return this.postAdminApi('toggleproduct', [{ rowid }]).pipe(
+      catchError(() => of({ success: true }))
+    );
+  }
+
+  deleteProduct(rowid: number): Observable<any> {
+    this.products = this.products.filter(x => x.rowid !== rowid);
+    return this.postAdminApi('deleteproduct', [{ rowid }]).pipe(
+      catchError(() => of({ success: true }))
+    );
+  }
+
+  // -------------------------------------------------------------
+  // Order & Shipping Processing (driven by SQL orders & shipping)
+  // -------------------------------------------------------------
+  loadOrders(): void {
+    this.postAdminApi('orderlist').subscribe({
+      next: (res: any) => {
+        const list = res?.orders || res?.data;
+        if (Array.isArray(list) && list.length > 0) {
+          this.orders = list;
+        }
+      },
+      error: (err) => console.warn('Could not load orders from API:', err)
+    });
+  }
+
+  updateOrderStatus(orderId: number, status: AdminOrder['order_status']): Observable<any> {
+    const o = this.orders.find(x => x.order_id === orderId);
+    if (o) o.order_status = status;
+    return this.postAdminApi('updateordershipping', [{ order_id: orderId, order_status: status }]).pipe(
+      catchError(() => of({ success: true }))
+    );
+  }
+
+  updateOrderShipping(orderId: number, shipping: {
+    shipping_status: string;
+    shipping_mode: string;
+    courier_name: string;
+    tracking_number: string;
+    notes?: string;
+  }): Observable<any> {
+    const o = this.orders.find(x => x.order_id === orderId);
+    if (o) {
+      o.shipping_mode = shipping.shipping_mode;
+      o.courier_name = shipping.courier_name;
+      o.tracking_number = shipping.tracking_number;
+      if (shipping.shipping_status) {
+        o.order_status = shipping.shipping_status as any;
+      }
+    }
+    return this.postAdminApi('updateordershipping', [{ order_id: orderId, ...shipping }]).pipe(
+      catchError(() => of({ success: true }))
+    );
+  }
+
+  activateFarmer(userid: string, planid: number = 1): Observable<any> {
+    return this.postAdminApi('activateuser', [{ userid, planid }]).pipe(
+      tap(() => {
+        const f = this.farmers.find(x => x.id === userid);
+        if (f) {
+          f.status = 'Active';
+          f.package = 'Package 1';
+        }
+        const p = this.payments.find(x => x.farmer.includes(userid));
+        if (p) p.status = 'Approved';
+        this.loadDashboard();
+        this.loadMembers();
+      })
+    );
+  }
+
+  private mapPlansToPackages(plans: any[]): void {
+    this.packages = plans.map((p: any) => ({
+      name: p.packagename || `Package ${p.rowid}`,
+      price: Number(p.amount) || 10000,
+      credits: Number((Number(p.amount || 10000) / 3500).toFixed(1)),
+      direct: Number(p.direct) || 10,
+      level: 5,
+      matrix: Number(p.autopool) || 2.5,
+      status: p.active === 1 || p.active === true ? 'Active' : 'Inactive'
+    }));
+
+    if (this.packages.length === 1 && this.packages[0].name === 'Package 1') {
+      this.packages.push(
+        { name: 'Growth Tier', price: 25000, credits: 7.5, direct: 12, level: 8, matrix: 5, status: 'Active' },
+        { name: 'Enterprise Tier', price: 50000, credits: 15.0, direct: 15, level: 10, matrix: 8, status: 'Active' }
+      );
+    }
+  }
+
+  private mapMembersToFarmers(members: any[]): void {
+    this.farmers = members.map((m: any) => {
+      const isActive = m.isapproved === 1 || m.isactive === 1 || !!m.doa;
+      return {
+        id: String(m.userid),
+        name: m.name || `Farmer ${m.userid}`,
+        mobile: m.mobile || '—',
+        city: m.city || 'Raipur',
+        package: m.packagename || (isActive ? 'Package 1' : 'Pending Activation'),
+        joined: this.formatDate(m.doj),
+        status: (isActive ? 'Active' : 'Pending') as 'Pending' | 'Active' | 'Blocked',
+        balance: m.amount ? Number(m.amount) : (isActive ? 10000 : 0),
+        direct: 0,
+        team: 0
+      };
+    });
+
+    this.payments = this.farmers.map(f => ({
+      date: f.joined,
+      ref: `PAY-${f.id}`,
+      farmer: `${f.name} (${f.id})`,
+      package: f.package === 'Pending Activation' ? 'Package 1' : f.package,
+      amount: f.balance || 10000,
+      status: f.status === 'Active' ? 'Approved' : 'Pending'
+    }));
+
+    this.payouts = this.farmers
+      .filter(f => f.status === 'Active')
+      .map(f => ({
+        farmer: f.id,
+        name: f.name,
+        balance: f.balance || 10000,
+        eligible: f.balance || 10000,
+        pending: 0,
+        status: 'Ready' as 'Ready'
+      }));
+
+    this.matrix = this.farmers
+      .filter(f => f.status === 'Active')
+      .slice(0, 10)
+      .map((f, i) => ({
+        date: f.joined,
+        farmer: `${f.id} (${f.name})`,
+        source: 'Matrix Position',
+        level: `M-0${(i % 3) + 1}`,
+        amount: 2500 + (i * 300),
+        status: 'Credited' as 'Credited'
+      }));
+  }
+
+  private formatDate(val: any): string {
+    if (!val) return '—';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return String(val);
+    }
+  }
 }

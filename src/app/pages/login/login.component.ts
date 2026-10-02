@@ -16,6 +16,7 @@ export class LoginComponent {
   p = 'admin123';
   show = false;
   error = '';
+  loading = false;
 
   constructor(private a: AuthService, private r: Router) {}
 
@@ -28,18 +29,28 @@ export class LoginComponent {
   submit() {
     this.error = '';
     if (!this.u.trim()) {
-      this.error = 'Please enter User ID (e.g. admin or superadmin)';
+      this.error = 'Please enter User ID or Email.';
       return;
     }
     if (!this.p.trim()) {
-      this.error = 'Please enter Password (any password, e.g. admin123)';
+      this.error = 'Please enter Password.';
       return;
     }
 
-    if (this.a.login(this.u, this.p)) {
-      this.r.navigateByUrl('/dashboard');
-    } else {
-      this.error = 'Invalid User ID. Use "admin" or "superadmin" with any password.';
-    }
+    this.loading = true;
+    this.a.login(this.u, this.p).subscribe({
+      next: (res) => {
+        this.loading = false;
+        if (res.success) {
+          this.r.navigateByUrl('/dashboard');
+        } else {
+          this.error = res.message || 'Invalid User ID / Email or Password.';
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message || err?.message || 'Login request failed. Check server connection.';
+      }
+    });
   }
 }

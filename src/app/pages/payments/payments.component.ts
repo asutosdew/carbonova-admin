@@ -2,4 +2,10 @@ import {Component} from '@angular/core';import {CommonModule} from '@angular/com
   get pagedPayments(){return this.d.payments.slice((this.page-1)*this.pageSize,this.page*this.pageSize);}
   onPageChange(p:number){this.page=p;}
   onPageSizeChange(size:number){this.pageSize=size;this.page=1;}
-  constructor(public d:DataService){}approve(x:any){x.status='Approved'}}
+  constructor(public d:DataService){}
+  approve(x:any){
+    x.status='Approved';
+    const match = x.farmer?.match(/\d+/);
+    if(match){ this.d.activateFarmer(match[0]).subscribe(); }
+  }
+}

@@ -1,48 +1,200 @@
 <div class="products-page">
   <div class="page-head">
-    <div><span class="eyebrow">CATALOGUE MANAGEMENT</span><h1>Products</h1><p>Add, edit and control products available for farmer packages.</p></div>
-    <button class="add-btn" (click)="openAdd()">+ Add Product</button>
+    <div>
+      <span class="eyebrow">CATALOGUE &amp; PLANT MANAGEMENT</span>
+      <h1>Products &amp; Plants</h1>
+      <p>Manage plants and agricultural products, link them with farmer packages, set DP pricing and configure customer reward points.</p>
+    </div>
+    <button class="add-btn" (click)="openAdd()">+ Add Plant / Product</button>
   </div>
 
   <div class="stats">
-    <div class="stat-card"><span>Total Products</span><strong>{{products.length}}</strong></div>
-    <div class="stat-card"><span>Active Products</span><strong>{{activeCount}}</strong></div>
-    <div class="stat-card"><span>Inactive Products</span><strong>{{inactiveCount}}</strong></div>
+    <div class="stat-card">
+      <span>Total Products</span>
+      <strong>{{d.products.length}}</strong>
+      <small>In database catalogue</small>
+    </div>
+    <div class="stat-card">
+      <span>Active Products</span>
+      <strong class="text-success">{{activeCount}}</strong>
+      <small>Available to purchase</small>
+    </div>
+    <div class="stat-card">
+      <span>Package Linked</span>
+      <strong>{{packageLinkedCount}}</strong>
+      <small>Included in farmer kits</small>
+    </div>
+    <div class="stat-card">
+      <span>Inactive Products</span>
+      <strong class="text-muted">{{inactiveCount}}</strong>
+      <small>Archived / Disabled</small>
+    </div>
   </div>
 
   <div class="toolbar">
-    <input type="search" [(ngModel)]="search" placeholder="Search product...">
-    <select [(ngModel)]="statusFilter"><option>All</option><option>Active</option><option>Inactive</option></select>
+    <div class="search-box">
+      <input type="search" [(ngModel)]="search" placeholder="Search by plant name, scientific name, or ID...">
+    </div>
+    <div class="filters">
+      <select [(ngModel)]="statusFilter">
+        <option value="All">All Status</option>
+        <option value="Active">Active Only</option>
+        <option value="Inactive">Inactive Only</option>
+      </select>
+      <select [(ngModel)]="packageFilter">
+        <option value="All">All Types</option>
+        <option value="Package Linked">Package Linked Only</option>
+        <option value="Standalone Only">Standalone Store Only</option>
+      </select>
+    </div>
   </div>
 
-  <section class="table-card"><div class="table-wrap"><table>
-    <thead><tr><th>Product</th><th>Price</th><th>DP Price</th><th>Reward Point</th><th>Status</th><th>Action</th></tr></thead>
-    <tbody>
-      <tr *ngFor="let p of filteredProducts">
-        <td><strong>{{p.name}}</strong><small>Product ID: {{p.id}}</small></td>
-        <td>₹{{p.price | number}}</td><td>₹{{p.dpPrice | number}}</td><td>{{p.rewardPoint}}</td>
-        <td><span class="status" [class.active]="p.active" [class.inactive]="!p.active">{{p.active?'Active':'Inactive'}}</span></td>
-        <td><div class="actions"><button class="edit-btn" (click)="openEdit(p)">Edit</button><button class="status-btn" (click)="askToggle(p)">{{p.active?'Deactivate':'Activate'}}</button></div></td>
-      </tr>
-      <tr *ngIf="!filteredProducts.length"><td colspan="6" class="empty">No products found.</td></tr>
-    </tbody>
-  </table></div></section>
+  <section class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product / Plant</th>
+            <th>Scientific Name</th>
+            <th>Price</th>
+            <th>DP Price</th>
+            <th>Reward Points</th>
+            <th>Stock Qty</th>
+            <th>Package Link</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of filteredProducts">
+            <td>
+              <div class="prod-cell">
+                <img [src]="p.image || 'https://images.unsplash.com/photo-1596707325255-7a315e966b96?w=80&fit=crop'" [alt]="p.productname" class="thumb" onerror="this.src='https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&fit=crop'">
+                <div>
+                  <strong>{{p.productname}}</strong>
+                  <small>ID: #{{p.rowid}}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="scientific-name"><em>{{p.scientificname || '—'}}</em></span>
+            </td>
+            <td class="price-cell">₹{{p.price | number}}</td>
+            <td class="dp-cell">₹{{p.dp | number}}</td>
+            <td>
+              <span class="rp-badge">★ {{p.rewardpoint}} RP</span>
+            </td>
+            <td>
+              <span class="stock-badge" [class.low]="p.quantity < 50">{{p.quantity}} units</span>
+            </td>
+            <td>
+              <span class="tag-badge" [class.linked]="p.linkwithpackage" [class.unlinked]="!p.linkwithpackage">
+                {{p.linkwithpackage ? '✓ In Package' : 'Standalone'}}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill" [class.active]="p.active" [class.inactive]="!p.active">
+                {{p.active ? 'Active' : 'Inactive'}}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="edit-btn" (click)="openEdit(p)">Edit</button>
+                <button class="status-btn" (click)="askToggle(p)">{{p.active ? 'Deactivate' : 'Activate'}}</button>
+                <button class="del-btn" (click)="askDelete(p)">×</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="!filteredProducts.length">
+            <td colspan="9" class="empty">No products or plants found matching the selected filters.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
-<div class="modal-overlay" *ngIf="showForm"><div class="modal">
-  <div class="modal-head"><div><span>{{editingProduct?'PRODUCT UPDATE':'PRODUCT ENTRY'}}</span><h2>{{editingProduct?'Edit Product':'Add Product'}}</h2></div><button class="close-btn" (click)="closeForm()">×</button></div>
-  <div class="form-grid">
-    <label class="full">Product Name<input [(ngModel)]="form.name" placeholder="Enter product name"></label>
-    <label>Price<input type="number" min="0" [(ngModel)]="form.price"></label>
-    <label>DP Price<input type="number" min="0" [(ngModel)]="form.dpPrice"></label>
-    <label>Reward Point<input type="number" min="0" [(ngModel)]="form.rewardPoint"></label>
-    <label>Product Status<select [(ngModel)]="form.active"><option [ngValue]="true">Active</option><option [ngValue]="false">Inactive</option></select></label>
-  </div>
-  <div class="validation" *ngIf="form.dpPrice>form.price&&form.price>0">DP Price cannot be greater than Product Price.</div>
-  <div class="modal-actions"><button class="cancel-btn" (click)="closeForm()">Cancel</button><button class="save-btn" [disabled]="!form.name.trim()||form.price<=0||form.dpPrice<0||form.dpPrice>form.price" (click)="askSave()">{{editingProduct?'Update Product':'Add Product'}}</button></div>
-</div></div>
+<!-- Modal Entry Form -->
+<div class="modal-overlay" *ngIf="showForm">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <span>{{editingProduct ? 'CATALOGUE UPDATE' : 'NEW PLANT ENTRY'}}</span>
+        <h2>{{editingProduct ? 'Edit Product' : 'Add New Plant / Product'}}</h2>
+      </div>
+      <button class="close-btn" (click)="closeForm()">×</button>
+    </div>
 
-<div class="modal-overlay" *ngIf="showConfirm"><div class="confirm-modal">
-  <div class="confirm-icon">?</div><h2>{{confirmationTitle}}</h2><p>{{confirmationMessage}}</p>
-  <div class="modal-actions"><button class="cancel-btn" (click)="closeConfirm()">Cancel</button><button class="save-btn" (click)="confirmAction()">{{confirmationButton}}</button></div>
-</div></div>
+    <div class="form-grid">
+      <label class="full">
+        Product / Plant Name *
+        <input [(ngModel)]="form.productname" placeholder="e.g. Vietnam Super Early Jackfruit">
+      </label>
+
+      <label class="full">
+        Scientific / Botanical Name
+        <input [(ngModel)]="form.scientificname" placeholder="e.g. Artocarpus heterophyllus">
+      </label>
+
+      <label>
+        Market Price (₹) *
+        <input type="number" min="0" [(ngModel)]="form.price" placeholder="1000">
+      </label>
+
+      <label>
+        Distributor Price (DP ₹)
+        <input type="number" min="0" [(ngModel)]="form.dp" placeholder="800">
+      </label>
+
+      <label>
+        Reward Points (RP)
+        <input type="number" min="0" [(ngModel)]="form.rewardpoint" placeholder="25">
+        <small class="hint">Points awarded to consumers on individual purchase</small>
+      </label>
+
+      <label>
+        Available Stock (Quantity)
+        <input type="number" min="0" [(ngModel)]="form.quantity" placeholder="100">
+      </label>
+
+      <label class="full">
+        Image URL
+        <input [(ngModel)]="form.image" placeholder="https://images.unsplash.com/photo-...">
+      </label>
+
+      <label class="checkbox-label full">
+        <input type="checkbox" [(ngModel)]="form.linkwithpackage">
+        <span><b>Link with Package:</b> Enable this plant to be selected within Farmer Packages (formar_plants)</span>
+      </label>
+
+      <label class="checkbox-label full">
+        <input type="checkbox" [(ngModel)]="form.active">
+        <span><b>Active Status:</b> Display this product for consumer ordering and package selection</span>
+      </label>
+    </div>
+
+    <div class="validation" *ngIf="form.dp > form.price && form.price > 0">
+      ⚠️ Distributor Price (DP) should not exceed Market Price.
+    </div>
+
+    <div class="modal-actions">
+      <button class="cancel-btn" (click)="closeForm()">Cancel</button>
+      <button class="save-btn" [disabled]="!form.productname.trim() || form.price <= 0 || (form.dp > form.price && form.price > 0)" (click)="askSave()">
+        {{editingProduct ? 'Update Product' : 'Add Product'}}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Dialog -->
+<div class="modal-overlay" *ngIf="showConfirm">
+  <div class="confirm-modal">
+    <div class="confirm-icon">?</div>
+    <h2>{{confirmationTitle}}</h2>
+    <p>{{confirmationMessage}}</p>
+    <div class="modal-actions">
+      <button class="cancel-btn" (click)="closeConfirm()">Cancel</button>
+      <button class="save-btn" (click)="confirmAction()">{{confirmationButton}}</button>
+    </div>
+  </div>
+</div>

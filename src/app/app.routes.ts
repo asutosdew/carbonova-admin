@@ -1,7 +1,28 @@
 import { ProductsComponent } from './pages/products/products.component';
 import {Routes} from '@angular/router';import {adminGuard} from './core/auth.guard';import {LoginComponent} from './pages/login/login.component';import {AdminLayoutComponent} from './layout/admin-layout.component';import {DashboardComponent} from './pages/dashboard/dashboard.component';import {MembersComponent} from './pages/members/members.component';import {PackagesComponent} from './pages/packages/packages.component';import {PaymentsComponent} from './pages/payments/payments.component';import {DirectIncomeComponent} from './pages/direct-income/direct-income.component';import {LevelIncomeComponent} from './pages/level-income/level-income.component';import {MatrixIncomeComponent} from './pages/matrix-income/matrix-income.component';import {PayoutsComponent} from './pages/payouts/payouts.component';import {AccountsComponent} from './pages/accounts/accounts.component';import {TransactionsComponent} from './pages/transactions/transactions.component';import {SettingsComponent} from './pages/settings/settings.component';import {UsersRolesComponent} from './pages/users-roles/users-roles.component';import {ShippingComponent} from './pages/shipping/shipping.component';
-export const routes:Routes=[
-{path:'login',component:LoginComponent},{path:'',component:AdminLayoutComponent,canActivate:[adminGuard],children:[
-{path:'dashboard',component:DashboardComponent},{path:'members',component:MembersComponent},{path:'packages',component:PackagesComponent},{path:'payments',component:PaymentsComponent},
-{path:'direct-income',component:DirectIncomeComponent},{path:'level-income',component:LevelIncomeComponent},{path:'matrix-income',component:MatrixIncomeComponent},{path:'payouts',component:PayoutsComponent},{path:'accounts',component:AccountsComponent},{path:'transactions',component:TransactionsComponent},{path:'users-roles',component:UsersRolesComponent},{path:'settings',component:SettingsComponent},{path:'shipping',component:ShippingComponent},{path:'',pathMatch:'full',redirectTo:'dashboard'}]},
-{path:'**',redirectTo:'dashboard'}, { path: 'products', component: ProductsComponent }];
+export const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  {
+    path: '',
+    component: AdminLayoutComponent,
+    canActivate: [adminGuard],
+    children: [
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'members', component: MembersComponent },
+      { path: 'packages', component: PackagesComponent },
+      { path: 'payments', component: PaymentsComponent },
+      { path: 'products', component: ProductsComponent },
+      { path: 'shipping', component: ShippingComponent },
+      { path: 'direct-income', component: DirectIncomeComponent },
+      { path: 'level-income', component: LevelIncomeComponent },
+      { path: 'matrix-income', component: MatrixIncomeComponent },
+      { path: 'payouts', component: PayoutsComponent },
+      { path: 'accounts', component: AccountsComponent },
+      { path: 'transactions', component: TransactionsComponent },
+      { path: 'users-roles', component: UsersRolesComponent },
+      { path: 'settings', component: SettingsComponent },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' }
+    ]
+  },
+  { path: '**', redirectTo: 'dashboard' }
+];
