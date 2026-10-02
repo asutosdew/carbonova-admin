@@ -22,10 +22,65 @@ export class ProductsComponent implements OnInit {
   statusFilter = 'All';
   packageFilter = 'All';
 
+  uploading = false;
+  uploadError = '';
+  uploadSuccess = '';
+
   constructor(public d: DataService) {}
 
   ngOnInit(): void {
     this.d.loadProducts();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+
+    if (!file.type.startsWith('image/')) {
+      this.uploadError = 'Please select a valid image file (JPG, PNG, WebP).';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      this.uploadError = 'File size exceeds 10MB limit.';
+      return;
+    }
+
+    this.uploading = true;
+    this.uploadError = '';
+    this.uploadSuccess = '';
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.form.image = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+
+    // Send to server
+    this.d.uploadImage(file, 'products').subscribe({
+      next: (res) => {
+        this.uploading = false;
+        if (res && res.result === 1 && (res.url || res.filepath)) {
+          this.form.image = res.url || `https://www.carbonovaworld.com/${res.filepath}`;
+          this.uploadSuccess = '✓ Photo uploaded to server successfully!';
+        } else {
+          this.uploadError = res?.message || 'Upload failed on server.';
+        }
+      },
+      error: (err) => {
+        this.uploading = false;
+        console.warn('Image upload error:', err);
+        this.uploadError = 'Could not upload to server. Check connection.';
+      }
+    });
+  }
+
+  removeImage(): void {
+    this.form.image = '';
+    this.uploadSuccess = '';
+    this.uploadError = '';
   }
 
   emptyProduct(): ProductItem {

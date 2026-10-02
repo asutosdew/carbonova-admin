@@ -12,19 +12,13 @@ import { AuthService } from '../../core/auth.service';
   styleUrl: './login.component.scss'
 })
 export class LoginComponent {
-  u = 'admin';
-  p = 'admin123';
+  u = '';
+  p = '';
   show = false;
   error = '';
   loading = false;
 
   constructor(private a: AuthService, private r: Router) {}
-
-  fillDemo(username: string) {
-    this.u = username;
-    this.p = 'admin123';
-    this.error = '';
-  }
 
   submit() {
     this.error = '';

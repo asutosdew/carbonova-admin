@@ -147,45 +147,51 @@ if($routename=="deletepayout")
 
 if($routename=="activeplans")
 {
-    $q->planlist=PDO_FetchAll("select * from plans where active =1");
-
+    $q->planlist = PDO_FetchAll("SELECT rowid, packagename, amount, active, description, autopool, direct, IFNULL(image, '') as image FROM plans WHERE active = 1 ORDER BY rowid ASC");
 }
 
 if($routename=="planlist")
 {
-    $q->results=PDO_FetchAll("select * from plans");
+    $q->results = PDO_FetchAll("SELECT rowid, packagename, amount, active, description, autopool, direct, IFNULL(image, '') as image FROM plans ORDER BY rowid ASC");
 }
 
 if($routename=="updateplan")
 {
-    $enablejoinig=$data['enablejoining'];
-    $isactive=$data['isactive'];
-    $planvalue=$data['planvalue'];
-    $basicplanvalue=$data['basicplanvalue'];
-    $directincome=$data['directincome'];
-    $pvalue=$data['pvalue'];
-    $pvalue2=$data['pvalue2'];
-    $planname=$data['planname'];
-    $planid=$data['planid'];
-    PDO_Execute("update plans set planname=?,isactive=?,planvalue=?,basicplanvalue=?,pvalue=?,pvalue2=?,enablejoining=? where planid=?",[$planname,$isactive,$planvalue,$basicplanvalue,$pvalue,$pvalue2,$enablejoinig,$planid]);
-    $q->result=1;
+    $rowid       = intval($data['rowid'] ?? $data['planid'] ?? 0);
+    $packagename = $data['packagename'] ?? $data['name'] ?? '';
+    $amount      = floatval($data['amount'] ?? $data['price'] ?? 0);
+    $active      = (isset($data['active']) && ($data['active'] === 1 || $data['active'] === '1' || $data['active'] === true || $data['status'] === 'Active')) ? 1 : 0;
+    $description = $data['description'] ?? '';
+    $autopool    = floatval($data['autopool'] ?? $data['matrix'] ?? 0);
+    $direct      = floatval($data['direct'] ?? 0);
+    $image       = $data['image'] ?? '';
 
+    if ($rowid > 0) {
+        PDO_Execute("UPDATE plans SET packagename=?, amount=?, active=?, description=?, autopool=?, direct=?, image=? WHERE rowid=?",
+            [$packagename, $amount, $active, $description, $autopool, $direct, $image, $rowid]);
+        $q->rowid = $rowid;
+        $q->result = 1;
+    } else {
+        $q->result = 0;
+        $q->message = "Invalid plan rowid";
+    }
 }
 
 if($routename=="newplan")
 {
-    $enablejoinig=$data['enablejoining'];
-    $isactive=$data['isactive'];
-    $planvalue=$data['planvalue'];
-    $basicplanvalue=$data['basicplanvalue'];
-    $directincome=$data['directincome'];
-    $pvalue=$data['pvalue'];
-    $pvalue2=$data['pvalue2'];
-    $planname=$data['planname'];
-    //$planid=$data['planid'];
-    PDO_Execute("insert into plans(planname,isactive,planvalue,basicplanvalue,pvalue,pvalue2,enablejoining) values (?,?,?,?,?,?,?)",[$planname,$isactive,$planvalue,$basicplanvalue,$pvalue,$pvalue2,$enablejoinig]);
-    $q->planid=PDO_LastInsertId;
-    $q->result=1;
+    $packagename = $data['packagename'] ?? $data['name'] ?? '';
+    $amount      = floatval($data['amount'] ?? $data['price'] ?? 0);
+    $active      = (isset($data['active']) && ($data['active'] === 0 || $data['active'] === '0' || $data['active'] === false || $data['status'] === 'Inactive')) ? 0 : 1;
+    $description = $data['description'] ?? '';
+    $autopool    = floatval($data['autopool'] ?? $data['matrix'] ?? 0);
+    $direct      = floatval($data['direct'] ?? 0);
+    $image       = $data['image'] ?? '';
+
+    PDO_Execute("INSERT INTO plans(packagename, amount, active, description, autopool, direct, image) VALUES (?,?,?,?,?,?,?)",
+        [$packagename, $amount, $active, $description, $autopool, $direct, $image]);
+    $q->rowid = PDO_LastInsertId();
+    $q->planid = $q->rowid;
+    $q->result = 1;
 }
 
 
@@ -2219,6 +2225,92 @@ if($routename=="deleterepurchaseproduct")
 // ==============================================================================
 // CARBONOVA PLANTS / PRODUCTS & ORDERS MANAGEMENT API ROUTES
 // ==============================================================================
+
+// 0. Image Upload Handler (Supports Multipart $_FILES or Base64 in JSON)
+if($routename=="uploadimage")
+{
+    $folder = isset($_POST['folder']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['folder']) : ($data['folder'] ?? 'products');
+    if (empty($folder)) $folder = 'products';
+    
+    $uploadDir = "../uploads/" . $folder . "/";
+    if (!file_exists($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+    }
+    
+    // Case A: Multipart File Upload via $_FILES
+    if (isset($_FILES['file']) || isset($_FILES['image'])) {
+        $file = isset($_FILES['file']) ? $_FILES['file'] : $_FILES['image'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        
+        if (!in_array($ext, $allowed)) {
+            $q->result = 0;
+            $q->message = "Invalid image type. Allowed: jpg, jpeg, png, webp, gif";
+            echo json_encode($q);
+            exit;
+        }
+        
+        if ($file['size'] > 10 * 1024 * 1024) { // 10MB limit
+            $q->result = 0;
+            $q->message = "Image size exceeds 10MB limit";
+            echo json_encode($q);
+            exit;
+        }
+        
+        $newFilename = $folder . "_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext;
+        $targetPath = $uploadDir . $newFilename;
+        
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            $relativePath = "uploads/" . $folder . "/" . $newFilename;
+            $fullUrl = "https://www.carbonovaworld.com/" . $relativePath;
+            $q->result = 1;
+            $q->message = "Image uploaded successfully";
+            $q->url = $fullUrl;
+            $q->filepath = $relativePath;
+            $q->filename = $newFilename;
+        } else {
+            $q->result = 0;
+            $q->message = "Failed to write uploaded image to disk";
+        }
+        echo json_encode($q);
+        exit;
+    }
+    
+    // Case B: Base64 string in JSON data
+    $base64Data = $data['base64'] ?? $data['image'] ?? '';
+    if (!empty($base64Data)) {
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
+            $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+            $ext = strtolower($type[1]);
+            if ($ext == 'jpeg') $ext = 'jpg';
+        } else {
+            $ext = 'jpg';
+        }
+        $decoded = base64_decode($base64Data);
+        if ($decoded !== false) {
+            $newFilename = $folder . "_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext;
+            $targetPath = $uploadDir . $newFilename;
+            file_put_contents($targetPath, $decoded);
+            $relativePath = "uploads/" . $folder . "/" . $newFilename;
+            $fullUrl = "https://www.carbonovaworld.com/" . $relativePath;
+            $q->result = 1;
+            $q->message = "Image uploaded successfully";
+            $q->url = $fullUrl;
+            $q->filepath = $relativePath;
+            $q->filename = $newFilename;
+        } else {
+            $q->result = 0;
+            $q->message = "Invalid base64 image data";
+        }
+        echo json_encode($q);
+        exit;
+    }
+    
+    $q->result = 0;
+    $q->message = "No image file or base64 data received";
+    echo json_encode($q);
+    exit;
+}
 
 // 1. Fetch All Plants / Products
 if($routename=="productlist")

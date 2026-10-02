@@ -10,30 +10,15 @@
       <p>Manage farmers, packages, payments and the carbon farming network.</p>
     </div>
 
-    <div class="demo-box">
-      <div class="demo-title">Quick Demo Login (Click to auto-fill):</div>
-      <div class="demo-chips">
-        <button type="button" class="demo-chip" (click)="fillDemo('admin')">
-          👤 <b>Super Admin</b> (admin)
-        </button>
-        <button type="button" class="demo-chip" (click)="fillDemo('operations')">
-          👤 <b>Operations</b> (operations)
-        </button>
-        <button type="button" class="demo-chip" (click)="fillDemo('finance')">
-          👤 <b>Finance</b> (finance)
-        </button>
-      </div>
-    </div>
-
     <div class="error" *ngIf="error">{{error}}</div>
 
     <form (ngSubmit)="submit()">
       <label>User ID</label>
-      <input [(ngModel)]="u" name="u" required placeholder="admin or superadmin">
+      <input [(ngModel)]="u" name="u" required placeholder="Enter User ID or Email">
 
       <label>Password</label>
       <div class="pass">
-        <input [type]="show ? 'text' : 'password'" [(ngModel)]="p" name="p" required placeholder="Password (e.g. admin123)">
+        <input [type]="show ? 'text' : 'password'" [(ngModel)]="p" name="p" required placeholder="Enter Password">
         <button type="button" (click)="show = !show">{{show ? 'Hide' : 'Show'}}</button>
       </div>
 

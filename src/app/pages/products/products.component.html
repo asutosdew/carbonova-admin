@@ -69,7 +69,7 @@
           <tr *ngFor="let p of filteredProducts">
             <td>
               <div class="prod-cell">
-                <img [src]="p.image || 'https://images.unsplash.com/photo-1596707325255-7a315e966b96?w=80&fit=crop'" [alt]="p.productname" class="thumb" onerror="this.src='https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&fit=crop'">
+                <img [src]="d.getImageUrl(p.image)" [alt]="p.productname" class="thumb" onerror="this.src='https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&fit=crop'">
                 <div>
                   <strong>{{p.productname}}</strong>
                   <small>ID: #{{p.rowid}}</small>
@@ -157,10 +157,35 @@
         <input type="number" min="0" [(ngModel)]="form.quantity" placeholder="100">
       </label>
 
-      <label class="full">
-        Image URL
-        <input [(ngModel)]="form.image" placeholder="https://images.unsplash.com/photo-...">
-      </label>
+      <div class="image-upload-section full">
+        <label class="upload-label">
+          <span>Product Photo</span>
+          <small class="hint">Browse an image file from your device to upload directly to server</small>
+        </label>
+
+        <div class="upload-controls">
+          <input #photoInput type="file" accept="image/png, image/jpeg, image/jpg, image/webp" (change)="onFileSelected($event)" style="display:none">
+          
+          <button type="button" class="btn-browse" (click)="photoInput.click()" [disabled]="uploading">
+            <span>📁</span> {{uploading ? 'Uploading to Server...' : 'Browse Photo'}}
+          </button>
+
+          <button type="button" class="btn-remove" *ngIf="form.image" (click)="removeImage()" [disabled]="uploading">
+            ✕ Remove Photo
+          </button>
+        </div>
+
+        <div class="upload-alert success" *ngIf="uploadSuccess">{{uploadSuccess}}</div>
+        <div class="upload-alert error" *ngIf="uploadError">{{uploadError}}</div>
+
+        <div class="image-preview-wrapper" *ngIf="form.image">
+          <img [src]="d.getImageUrl(form.image)" alt="Preview" class="preview-img">
+          <div class="preview-meta">
+            <span class="preview-title">Server Image URL / Path</span>
+            <input [(ngModel)]="form.image" placeholder="Image URL (auto-filled on upload)">
+          </div>
+        </div>
+      </div>
 
       <label class="checkbox-label full">
         <input type="checkbox" [(ngModel)]="form.linkwithpackage">

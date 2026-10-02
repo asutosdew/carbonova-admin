@@ -27,13 +27,21 @@ export interface Income {
 }
 
 export interface Package {
+  id?: number;
+  rowid?: number;
   name: string;
+  packagename?: string;
   price: number;
+  amount?: number;
   credits: number;
   direct: number;
   level: number;
   matrix: number;
+  autopool?: number;
+  description?: string;
+  image?: string;
   status: 'Active' | 'Inactive';
+  active?: number | boolean;
 }
 
 export interface PaymentItem {
@@ -397,6 +405,25 @@ export class DataService {
     return this.http.post<T>(this.adminApiUrl, payload, { headers });
   }
 
+  uploadImage(file: File, folder: string = 'products'): Observable<{ result: number; url?: string; filepath?: string; message?: string }> {
+    const formData = new FormData();
+    formData.append('token', this.auth.getToken());
+    formData.append('route', 'uploadimage');
+    formData.append('folder', folder);
+    formData.append('file', file, file.name);
+
+    return this.http.post<any>(this.adminApiUrl, formData);
+  }
+
+  getImageUrl(path: string | undefined | null): string {
+    if (!path) return 'https://images.unsplash.com/photo-1596707325255-7a315e966b96?w=80&fit=crop';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+      return path;
+    }
+    const clean = path.startsWith('/') ? path.substring(1) : path;
+    return `https://www.carbonovaworld.com/${clean}`;
+  }
+
   refreshAll(): void {
     this.loading = true;
     this.loadDashboard();
@@ -648,21 +675,93 @@ export class DataService {
     );
   }
 
+  savePackage(pkg: Partial<Package>): Observable<any> {
+    const payload = {
+      rowid: pkg.rowid || pkg.id || 0,
+      packagename: pkg.name || pkg.packagename || '',
+      amount: Number(pkg.price ?? pkg.amount ?? 0),
+      active: (pkg.status === 'Active' || pkg.active === 1 || pkg.active === true) ? 1 : 0,
+      description: pkg.description || `${pkg.credits || 2.8} tCO₂e project allocation`,
+      autopool: Number(pkg.matrix ?? pkg.autopool ?? 2.5),
+      direct: Number(pkg.direct ?? 10),
+      image: pkg.image || ''
+    };
+
+    const route = (payload.rowid && payload.rowid > 0) ? 'updateplan' : 'newplan';
+
+    return this.postAdminApi(route, [payload]).pipe(
+      tap((res: any) => {
+        if (payload.rowid > 0) {
+          const ex = this.packages.find(x => x.rowid === payload.rowid || x.id === payload.rowid);
+          if (ex) Object.assign(ex, pkg);
+        } else {
+          const newId = res?.rowid || res?.planid || (this.packages.length ? Math.max(...this.packages.map(x => x.rowid || x.id || 0)) + 1 : 1);
+          this.packages.push({
+            id: newId,
+            rowid: newId,
+            name: payload.packagename,
+            packagename: payload.packagename,
+            price: payload.amount,
+            amount: payload.amount,
+            credits: Number(pkg.credits) || 2.8,
+            direct: payload.direct,
+            level: 5,
+            matrix: payload.autopool,
+            autopool: payload.autopool,
+            description: payload.description,
+            image: payload.image,
+            status: payload.active === 1 ? 'Active' : 'Inactive',
+            active: payload.active
+          });
+        }
+      }),
+      catchError(() => {
+        if (payload.rowid > 0) {
+          const ex = this.packages.find(x => x.rowid === payload.rowid || x.id === payload.rowid);
+          if (ex) Object.assign(ex, pkg);
+        } else {
+          this.packages.push({
+            id: Date.now(),
+            rowid: Date.now(),
+            name: payload.packagename,
+            price: payload.amount,
+            credits: Number(pkg.credits) || 2.8,
+            direct: payload.direct,
+            level: 5,
+            matrix: payload.autopool,
+            description: payload.description,
+            image: payload.image,
+            status: payload.active === 1 ? 'Active' : 'Inactive'
+          });
+        }
+        return of({ success: true });
+      })
+    );
+  }
+
   private mapPlansToPackages(plans: any[]): void {
     this.packages = plans.map((p: any) => ({
-      name: p.packagename || `Package ${p.rowid}`,
-      price: Number(p.amount) || 10000,
-      credits: Number((Number(p.amount || 10000) / 3500).toFixed(1)),
-      direct: Number(p.direct) || 10,
+      id: Number(p.rowid || p.planid || 1),
+      rowid: Number(p.rowid || p.planid || 1),
+      name: p.packagename || p.planname || `Package ${p.rowid}`,
+      packagename: p.packagename || p.planname,
+      price: Number(p.amount || p.planvalue || 10000),
+      amount: Number(p.amount || p.planvalue || 10000),
+      credits: Number((Number(p.amount || p.planvalue || 10000) / 3500).toFixed(1)),
+      direct: Number(p.direct || p.directincome || 10),
       level: 5,
-      matrix: Number(p.autopool) || 2.5,
-      status: p.active === 1 || p.active === true ? 'Active' : 'Inactive'
+      matrix: Number(p.autopool || p.pvalue2 || 2.5),
+      autopool: Number(p.autopool || p.pvalue2 || 2.5),
+      description: p.description || '',
+      image: p.image || '',
+      status: (p.active === 1 || p.active === '1' || p.active === true || p.isactive === 1) ? 'Active' : 'Inactive',
+      active: (p.active === 1 || p.active === '1' || p.active === true) ? 1 : 0
     }));
 
     if (this.packages.length === 1 && this.packages[0].name === 'Package 1') {
       this.packages.push(
-        { name: 'Growth Tier', price: 25000, credits: 7.5, direct: 12, level: 8, matrix: 5, status: 'Active' },
-        { name: 'Enterprise Tier', price: 50000, credits: 15.0, direct: 15, level: 10, matrix: 8, status: 'Active' }
+        { id: 2, rowid: 2, name: 'Growth Tier', packagename: 'Growth Tier', price: 25000, amount: 25000, credits: 7.5, direct: 12, level: 8, matrix: 5, autopool: 5, image: '', status: 'Active', active: 1 },
+        { id: 3, rowid: 3, name: 'Enterprise Tier', packagename: 'Enterprise Tier', price: 50000, amount: 50000, credits: 15.0, direct: 15, level: 10, matrix: 8, autopool: 8, image: '', status: 'Active', active: 1 }
       );
     }
   }

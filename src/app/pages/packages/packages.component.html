@@ -1,2 +1,121 @@
-<app-page-header eyebrow="Product Management" title="Packages" description="Create and manage farmer participation packages and their configured benefits."/><div class="package-grid"><article *ngFor="let p of d.packages"><div class="top"><span>{{p.status}}</span><button (click)="toggle(p)">•••</button></div><h3>{{p.name}}</h3><strong>₹{{p.price | number}}</strong><div class="credit">{{p.credits}} tCO₂e project allocation</div><div class="rules"><div><b>{{p.direct}}%</b><small>Direct</small></div><div><b>{{p.level}}%</b><small>Level</small></div><div><b>{{p.matrix}}%</b><small>Matrix</small></div></div><button class="edit" (click)="openEdit(p)">Edit Package</button></article><article class="new"><span>+</span><h3>Create New Package</h3><p>Configure price, carbon allocation and income rules.</p><button>Create Package</button></article></div>
-<app-edit-modal *ngIf="showEdit" title="Edit Package" [model]="editing" [fields]="[{key:'name',label:'Package Name'},{key:'price',label:'Price',type:'number'},{key:'credits',label:'Carbon Allocation',type:'number'},{key:'direct',label:'Direct %',type:'number'},{key:'level',label:'Level %',type:'number'},{key:'matrix',label:'Matrix %',type:'number'}]" (saved)="saveEdit($event)" (closed)="closeEdit()"></app-edit-modal>
+<app-page-header 
+  eyebrow="Product Management" 
+  title="Packages" 
+  description="Create and manage farmer participation packages and their configured benefits."
+/>
+
+<div class="package-grid">
+  <!-- Existing Packages Cards -->
+  <article *ngFor="let p of d.packages" class="pkg-card">
+    <div class="pkg-image-wrap">
+      <img [src]="d.getImageUrl(p.image)" [alt]="p.name" onerror="this.src='https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400&fit=crop'">
+      <span class="status-badge" [class.inactive]="p.status==='Inactive'">{{p.status}}</span>
+      <button class="menu-btn" (click)="toggle(p)" title="Toggle Status">•••</button>
+    </div>
+
+    <div class="pkg-body">
+      <h3>{{p.name}}</h3>
+      <strong class="pkg-price">₹{{p.price | number}}</strong>
+      <div class="credit">{{p.credits}} tCO₂e carbon project allocation</div>
+
+      <div class="rules">
+        <div><b>{{p.direct}}%</b><small>Direct</small></div>
+        <div><b>{{p.level}}%</b><small>Level</small></div>
+        <div><b>{{p.matrix}}%</b><small>Matrix</small></div>
+      </div>
+
+      <button class="edit" (click)="openEdit(p)">Edit Package</button>
+    </div>
+  </article>
+
+  <!-- Create New Package Button/Card -->
+  <article class="new" (click)="openCreate()">
+    <span>+</span>
+    <h3>Create New Package</h3>
+    <p>Configure price, carbon allocation, package banner and income rules.</p>
+    <button type="button">Create Package</button>
+  </article>
+</div>
+
+<!-- Edit / Create Package Modal -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <span class="modal-eyebrow">Package Configuration</span>
+        <h2>{{isEdit ? 'Edit Package' : 'Create New Package'}}</h2>
+      </div>
+      <button class="close-btn" (click)="closeModal()">×</button>
+    </div>
+
+    <form (ngSubmit)="save()" class="pkg-form">
+      <!-- Image Upload Section -->
+      <div class="image-upload-section">
+        <label class="upload-label">
+          <span>Package Banner / Photo</span>
+          <small class="hint">Upload a photo to be displayed in user panel package details and admin</small>
+        </label>
+
+        <div class="upload-controls">
+          <input #pkgPhotoInput type="file" accept="image/png, image/jpeg, image/jpg, image/webp" (change)="onFileSelected($event)" style="display:none">
+          <button type="button" class="btn-browse" (click)="pkgPhotoInput.click()" [disabled]="uploading">
+            <span>📁</span> {{uploading ? 'Uploading to Server...' : 'Browse Photo'}}
+          </button>
+          <button type="button" class="btn-remove" *ngIf="editing.image" (click)="removeImage()" [disabled]="uploading">
+            ✕ Remove
+          </button>
+        </div>
+
+        <div class="upload-alert success" *ngIf="uploadSuccess">{{uploadSuccess}}</div>
+        <div class="upload-alert error" *ngIf="uploadError">{{uploadError}}</div>
+
+        <div class="image-preview-wrapper" *ngIf="editing.image">
+          <img [src]="d.getImageUrl(editing.image)" alt="Preview" class="preview-img">
+          <div class="preview-meta">
+            <span class="preview-title">Server Image URL / Path</span>
+            <input [(ngModel)]="editing.image" name="image" placeholder="Image URL (auto-filled on upload)">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Package Name
+          <input [(ngModel)]="editing.name" name="name" required placeholder="e.g. Package 1 (Growth Kit)">
+        </label>
+
+        <label>
+          Price (₹)
+          <input type="number" min="0" [(ngModel)]="editing.price" name="price" required placeholder="10000">
+        </label>
+
+        <label>
+          Carbon Allocation (tCO₂e)
+          <input type="number" step="0.1" min="0" [(ngModel)]="editing.credits" name="credits" placeholder="2.8">
+        </label>
+
+        <label>
+          Direct Income (%)
+          <input type="number" min="0" [(ngModel)]="editing.direct" name="direct" placeholder="10">
+        </label>
+
+        <label>
+          Level Income (%)
+          <input type="number" min="0" [(ngModel)]="editing.level" name="level" placeholder="5">
+        </label>
+
+        <label>
+          Matrix / Autopool (%)
+          <input type="number" step="0.1" min="0" [(ngModel)]="editing.matrix" name="matrix" placeholder="2.5">
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="closeModal()">Cancel</button>
+        <button type="submit" class="save-btn" [disabled]="uploading || !editing.name">
+          {{isEdit ? 'Save Changes' : 'Create Package'}}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

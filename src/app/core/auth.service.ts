@@ -44,11 +44,20 @@ export class AuthService {
   get loginApiUrl(): string {
     const isLocal = typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    return isLocal ? '/api/adminlogin.php' : 'https://www.carbonovaworld.com/api/adminlogin.php';
+    return isLocal ? '/api/login.php' : 'https://www.carbonovaworld.com/api/login.php';
   }
 
   getToken(): string {
     return localStorage.getItem(this.tokenKey) || this.defaultToken;
+  }
+
+  private normalizeRole(val: any): RoleName {
+    const raw = String(val || '').toLowerCase().trim().replace(/[-_]/g, ' ');
+    if (raw.includes('finance')) return 'Finance Admin';
+    if (raw.includes('operation')) return 'Operations Admin';
+    if (raw.includes('support')) return 'Support Admin';
+    if (raw.includes('view')) return 'Viewer';
+    return 'Super Admin';
   }
 
   login(userId: string, password: string): Observable<{ success: boolean; message?: string }> {
@@ -69,15 +78,19 @@ export class AuthService {
 
     return this.http.post<any>(this.loginApiUrl, body.toString(), { headers }).pipe(
       map(res => {
-        // If live API returns success
-        if (res && (res.result === 1 || res.status === 1 || res.token)) {
-          const token = res.token || res.admin_token || this.defaultToken;
+        // If live API returns success (result === 1 or status === 1 or status === 'success')
+        if (res && (res.result === 1 || res.status === 1 || res.status === 'success' || res.token)) {
+          const userData = res.user || res.data || res;
+          const token = res.token || res.admin_token || userData.token || this.defaultToken;
+          const rawRole = userData.role || userData.usertype || userData.role_name || res.role || res.usertype;
+          const assignedRole = this.normalizeRole(rawRole);
+
           const user: AdminUser = {
-            id: res.id || res.userid || 1,
-            name: res.name || 'System Administrator',
-            username: res.username || cleanUser,
-            email: res.email || 'admin@carbonfarm.local',
-            role: (res.role as RoleName) || 'Super Admin',
+            id: Number(userData.id || userData.userid || 1),
+            name: userData.name || userData.fullname || (assignedRole + ' User'),
+            username: userData.username || cleanUser,
+            email: userData.email || `${cleanUser}@carbonovaworld.com`,
+            role: assignedRole,
             status: 'Active'
           };
           this.setSession(token, user);
@@ -101,7 +114,7 @@ export class AuthService {
         };
       }),
       catchError(err => {
-        console.warn('Network error calling adminlogin.php, checking local fallback', err);
+        console.warn('Network error calling login.php, checking local fallback', err);
         const localMatch = this.users.find(u =>
           (u.username.toLowerCase() === cleanUser.toLowerCase() ||
            (cleanUser.toLowerCase() === 'superadmin' && u.username === 'admin')) &&
