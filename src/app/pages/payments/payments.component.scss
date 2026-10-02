@@ -1,0 +1,9 @@
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}.summary>div,.panel{background:#fff;border:1px solid #e8e4d9;border-radius:14px}.summary>div{padding:18px}.summary span{font-size:9px;text-transform:uppercase;color:#7f8982;letter-spacing:1px}.summary b{display:block;font-size:24px;color:#315b3d;margin-top:5px}.panel{padding:20px}.head span{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b816f;font-weight:800}.head h3{font:700 18px Georgia,serif;color:#26422f;margin:4px 0 20px}.table{overflow:auto}table{width:100%;min-width:800px;border-collapse:collapse;font-size:10px}th{padding:10px;text-align:left;font-size:8px;color:#89938c;text-transform:uppercase;border-bottom:1px solid #ece9e0}td{padding:12px 10px;border-bottom:1px solid #f0ede5}.amount{font-weight:800;color:#315b3d}em{font-style:normal;background:#e5eee6;color:#477253;padding:5px 8px;border-radius:20px;font-size:8px}.pending{background:#f3ead1;color:#8b722e}.approve{border:0;background:#315b3d;color:#fff;border-radius:6px;padding:6px 9px;font-size:8px}.done{color:#477253}@media(max-width:650px){.summary{grid-template-columns:1fr}.panel{padding:15px}}
+/* Enlarged table typography */
+table,.table table{font-size:13px !important;}
+table th,.table th{font-size:11px !important;line-height:1.4 !important;font-weight:700 !important;}
+table td,.table td{font-size:13px !important;line-height:1.5 !important;}
+table td b,.table td b{font-size:13px !important;}
+table td small,.table td small{font-size:11px !important;line-height:1.4 !important;}
+table td em,.table td em{font-size:11px !important;}
+table td button,.table td button{font-size:11px !important;}

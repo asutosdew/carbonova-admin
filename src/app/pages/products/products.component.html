@@ -1,0 +1,48 @@
+<div class="products-page">
+  <div class="page-head">
+    <div><span class="eyebrow">CATALOGUE MANAGEMENT</span><h1>Products</h1><p>Add, edit and control products available for farmer packages.</p></div>
+    <button class="add-btn" (click)="openAdd()">+ Add Product</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card"><span>Total Products</span><strong>{{products.length}}</strong></div>
+    <div class="stat-card"><span>Active Products</span><strong>{{activeCount}}</strong></div>
+    <div class="stat-card"><span>Inactive Products</span><strong>{{inactiveCount}}</strong></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="search" [(ngModel)]="search" placeholder="Search product...">
+    <select [(ngModel)]="statusFilter"><option>All</option><option>Active</option><option>Inactive</option></select>
+  </div>
+
+  <section class="table-card"><div class="table-wrap"><table>
+    <thead><tr><th>Product</th><th>Price</th><th>DP Price</th><th>Reward Point</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let p of filteredProducts">
+        <td><strong>{{p.name}}</strong><small>Product ID: {{p.id}}</small></td>
+        <td>₹{{p.price | number}}</td><td>₹{{p.dpPrice | number}}</td><td>{{p.rewardPoint}}</td>
+        <td><span class="status" [class.active]="p.active" [class.inactive]="!p.active">{{p.active?'Active':'Inactive'}}</span></td>
+        <td><div class="actions"><button class="edit-btn" (click)="openEdit(p)">Edit</button><button class="status-btn" (click)="askToggle(p)">{{p.active?'Deactivate':'Activate'}}</button></div></td>
+      </tr>
+      <tr *ngIf="!filteredProducts.length"><td colspan="6" class="empty">No products found.</td></tr>
+    </tbody>
+  </table></div></section>
+</div>
+
+<div class="modal-overlay" *ngIf="showForm"><div class="modal">
+  <div class="modal-head"><div><span>{{editingProduct?'PRODUCT UPDATE':'PRODUCT ENTRY'}}</span><h2>{{editingProduct?'Edit Product':'Add Product'}}</h2></div><button class="close-btn" (click)="closeForm()">×</button></div>
+  <div class="form-grid">
+    <label class="full">Product Name<input [(ngModel)]="form.name" placeholder="Enter product name"></label>
+    <label>Price<input type="number" min="0" [(ngModel)]="form.price"></label>
+    <label>DP Price<input type="number" min="0" [(ngModel)]="form.dpPrice"></label>
+    <label>Reward Point<input type="number" min="0" [(ngModel)]="form.rewardPoint"></label>
+    <label>Product Status<select [(ngModel)]="form.active"><option [ngValue]="true">Active</option><option [ngValue]="false">Inactive</option></select></label>
+  </div>
+  <div class="validation" *ngIf="form.dpPrice>form.price&&form.price>0">DP Price cannot be greater than Product Price.</div>
+  <div class="modal-actions"><button class="cancel-btn" (click)="closeForm()">Cancel</button><button class="save-btn" [disabled]="!form.name.trim()||form.price<=0||form.dpPrice<0||form.dpPrice>form.price" (click)="askSave()">{{editingProduct?'Update Product':'Add Product'}}</button></div>
+</div></div>
+
+<div class="modal-overlay" *ngIf="showConfirm"><div class="confirm-modal">
+  <div class="confirm-icon">?</div><h2>{{confirmationTitle}}</h2><p>{{confirmationMessage}}</p>
+  <div class="modal-actions"><button class="cancel-btn" (click)="closeConfirm()">Cancel</button><button class="save-btn" (click)="confirmAction()">{{confirmationButton}}</button></div>
+</div></div>

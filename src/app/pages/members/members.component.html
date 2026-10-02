@@ -1,0 +1,34 @@
+<app-page-header eyebrow="Farmer Management" title="Members" description="Approve, review and manage every farmer account."/><div class="stats"><div><span>Total Members</span><b>{{d.farmers.length}}</b></div><div><span>Pending</span><b>2</b></div><div><span>Active</span><b>3</b></div><div><span>Blocked</span><b>0</b></div></div><section class="panel"><div class="toolbar"><div><span>Member Directory</span><h3>All Farmers</h3></div><input placeholder="Search farmer ID or name..."></div><div class="table"><table><thead><tr><th>Farmer</th><th>Mobile</th><th>City</th><th>Package</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody><tr *ngFor="let f of pagedFarmers"><td><b>{{f.name}}</b><small>{{f.id}}</small></td><td>{{f.mobile}}</td><td>{{f.city}}</td><td>{{f.package}}</td><td>{{f.joined}}</td><td><em [class.pending]="f.status==='Pending'" [class.blocked]="f.status==='Blocked'">{{f.status}}</em></td><td><button *ngIf="f.status==='Pending'" class="approve" (click)="openApprove(f)">Approve</button><button class="ghost" (click)="openEdit(f)">Edit</button><button *ngIf="f.status!=='Blocked'" class="ghost" (click)="block(f)">Block</button></td></tr></tbody></table></div><app-pagination [page]="page" [pageSize]="pageSize" [total]="d.farmers.length" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination></section>
+
+<div class="activation-overlay" *ngIf="activationOpen">
+  <div class="activation-modal">
+    <div class="activation-icon" [class.success]="activationDone" [class.error]="!activationDone && activationMessage">
+      <span *ngIf="!activationProcessing && !activationDone">!</span>
+      <span *ngIf="activationProcessing" class="activation-spinner"></span>
+      <span *ngIf="activationDone">✓</span>
+      <span *ngIf="!activationProcessing && !activationDone && activationMessage">!</span>
+    </div>
+
+    <ng-container *ngIf="!activationProcessing && !activationDone && !activationMessage">
+      <h3>Confirm Farmer Activation</h3>
+      <p>Are you sure you want to activate <strong>{{selectedFarmer?.name}}</strong>?</p>
+      <div class="activation-actions">
+        <button class="activation-cancel" (click)="closeApprove()">Cancel</button>
+        <button class="activation-confirm" (click)="confirmApprove()">Activate</button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="activationProcessing">
+      <h3>Activating Farmer...</h3>
+      <p>Please wait while the activation is being processed. Do not click again.</p>
+    </ng-container>
+
+    <ng-container *ngIf="activationDone">
+      <h3>Activation Successful</h3>
+      <p>{{activationMessage}}</p>
+      <div class="activation-actions"><button class="activation-confirm" (click)="finishApprove()">Done</button></div>
+    </ng-container>
+  </div>
+</div>
+
+<app-edit-modal *ngIf="showEdit" title="Edit Farmer" [model]="editingFarmer" [fields]="[{key:'name',label:'Farmer Name'},{key:'mobile',label:'Mobile'},{key:'city',label:'City'},{key:'package',label:'Package'}]" (saved)="saveEdit($event)" (closed)="closeEdit()"></app-edit-modal>

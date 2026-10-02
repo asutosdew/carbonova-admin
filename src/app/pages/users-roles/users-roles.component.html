@@ -1,0 +1,14 @@
+<app-page-header eyebrow="Administration" title="Users & Roles" description="Manage multiple admin users and control access through role-based permissions."/>
+<div class="tabs"><button [class.active]="tab==='users'" (click)="tab='users'">Admin Users</button><button [class.active]="tab==='roles'" (click)="tab='roles'">Roles &amp; Permissions</button><button class="add" *ngIf="tab==='users'" (click)="showForm=!showForm">+ Add User</button></div>
+
+<section class="panel" *ngIf="showForm && tab==='users'"><div class="title"><span>Create Account</span><h3>New Admin User</h3></div>
+<div class="form-grid"><label>Full Name<input [(ngModel)]="newUser.name" placeholder="Enter name"></label><label>Username<input [(ngModel)]="newUser.username" placeholder="Enter username"></label><label>Email<input [(ngModel)]="newUser.email" type="email" placeholder="Enter email"></label><label>Role<select [(ngModel)]="newUser.role"><option *ngFor="let r of roles" [value]="r.name">{{r.name}}</option></select></label></div>
+<div class="actions"><button class="cancel" (click)="showForm=false">Cancel</button><button class="save" (click)="addUser()">Create User</button></div></section>
+
+<section class="panel" *ngIf="tab==='users'"><div class="title-row"><div><span>Access Control</span><h3>Administrator Accounts</h3></div><small>{{users.length}} users</small></div>
+<div class="table"><table><thead><tr><th>User</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>
+<tr *ngFor="let u of pagedUsers"><td><b>{{u.name}}</b><small>#{{u.id}}</small></td><td>{{u.username}}</td><td>{{u.email}}</td><td><em class="role">{{u.role}}</em></td><td><em class="status" [class.off]="u.status==='Inactive'">{{u.status}}</em></td><td><button class="toggle" (click)="toggleUser(u)">{{u.status==='Active'?'Deactivate':'Activate'}}</button></td></tr>
+</tbody></table></div><app-pagination [page]="page" [pageSize]="pageSize" [total]="users.length" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination></section>
+
+<section class="roles" *ngIf="tab==='roles'"><article class="role-card" *ngFor="let r of roles"><div class="role-head"><div class="role-icon">♙</div><div><h3>{{r.name}}</h3><p>{{r.description}}</p></div></div><div class="permission-title">Permissions</div><div class="permissions"><span *ngFor="let p of r.permissions">{{label(p)}}</span></div><div class="role-foot"><b>{{r.permissions.length}}</b><small>permissions enabled</small></div></article></section>
+<app-edit-modal *ngIf="showEdit" title="Edit Admin User" [model]="editing" [fields]="[{key:'name',label:'Name'},{key:'username',label:'Username'},{key:'email',label:'Email'}]" (saved)="saveEdit($event)" (closed)="closeEdit()"></app-edit-modal>

@@ -1,0 +1,5 @@
+<div class="edit-overlay"><div class="edit-card">
+<h3>{{title}}</h3>
+<div class="edit-grid"><label *ngFor="let f of fields">{{f.label}}<input [type]="f.type || 'text'" [(ngModel)]="model[f.key]"></label></div>
+<div class="edit-actions"><button class="cancel" (click)="closed.emit()">Cancel</button><button class="save" (click)="saved.emit(model)">Save Changes</button></div>
+</div></div>
