@@ -4,7 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {AuthService,AdminUser,RoleName} from '../../core/auth.service';
 import {PageHeaderComponent} from '../../shared/page-header.component';import {EditModalComponent} from '../../shared/edit-modal/edit-modal.component';import {PaginationComponent} from '../../shared/pagination/pagination.component';
 
-@Component({selector:'app-users-roles',standalone:true,imports:[CommonModule,FormsModule,PageHeaderComponent,PaginationComponent],templateUrl:'./users-roles.component.html',styleUrl:'./users-roles.component.scss'})
+@Component({selector:'app-users-roles',standalone:true,imports:[CommonModule,FormsModule,PageHeaderComponent,PaginationComponent,EditModalComponent],templateUrl:'./users-roles.component.html',styleUrl:'./users-roles.component.scss'})
 export class UsersRolesComponent{
   tab:'users'|'roles'='users';showForm=false;page=1;pageSize=10;get pagedUsers(){return this.users.slice((this.page-1)*this.pageSize,this.page*this.pageSize);}onPageChange(p:number){this.page=p;}onPageSizeChange(size:number){this.pageSize=size;this.page=1;}users:AdminUser[];roles:any[];
   newUser={name:'',username:'',email:'',role:'Operations Admin' as RoleName,status:'Active' as 'Active'};
