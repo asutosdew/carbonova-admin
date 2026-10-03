@@ -22,9 +22,6 @@ export class AuthService {
   private readonly userKey = 'cf_admin_user';
   private readonly tokenKey = 'cf_admin_token';
 
-  // Standard live token for admin.php
-  private readonly defaultToken = '1111-1111-1111-1111-1111';
-
   private users: AdminUser[] = [
     { id: 1, name: 'System Administrator', username: 'admin', email: 'admin@carbonfarm.local', role: 'Super Admin', status: 'Active' },
     { id: 2, name: 'Operations Manager', username: 'operations', email: 'operations@carbonfarm.local', role: 'Operations Admin', status: 'Active' },
@@ -48,7 +45,14 @@ export class AuthService {
   }
 
   getToken(): string {
-    return localStorage.getItem(this.tokenKey) || this.defaultToken;
+    return localStorage.getItem(this.tokenKey) || '';
+  }
+
+  private generateLocalToken(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return 'cf_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 15);
   }
 
   private normalizeRole(val: any): RoleName {
@@ -83,7 +87,10 @@ export class AuthService {
         // If live API returns success (result === 1 or status === 1 or status === 'success')
         if (res && (res.result === 1 || res.status === 1 || res.status === 'success' || res.token)) {
           const userData = res.user || res.data || res;
-          const token = res.token || res.admin_token || userData.token || this.defaultToken;
+          const token = res.token || res.admin_token || userData.token;
+          if (!token) {
+            return { success: false, message: 'No authentication token received from server.' };
+          }
           const rawRole = userData.role || userData.usertype || userData.role_name || res.role || res.usertype;
           const assignedRole = this.normalizeRole(rawRole);
 
@@ -106,7 +113,7 @@ export class AuthService {
           u.status === 'Active'
         );
         if (localMatch && (cleanPass === 'admin123' || cleanPass === 'password')) {
-          this.setSession(this.defaultToken, localMatch);
+          this.setSession(this.generateLocalToken(), localMatch);
           return { success: true };
         }
 
@@ -123,7 +130,7 @@ export class AuthService {
           u.status === 'Active'
         );
         if (localMatch && cleanPass) {
-          this.setSession(this.defaultToken, localMatch);
+          this.setSession(this.generateLocalToken(), localMatch);
           return of({ success: true });
         }
         return of({
@@ -145,6 +152,10 @@ export class AuthService {
   }
 
   logout(): void {
+    const token = this.getToken();
+    if (token) {
+      this.postAdminApi('adminlogout').pipe(catchError(() => of(null))).subscribe();
+    }
     localStorage.removeItem(this.loginKey);
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);

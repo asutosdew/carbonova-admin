@@ -57,40 +57,51 @@ else {
 }
 $q = new \stdClass();
 
-if (isset($token)) {
-if($token=="1111-1111-1111-1111-1111")
-		$username = 'admin';
-	else
-	{
-    $qparam = '';
-    $qparamval = '';
-    $arrcount = 0;
-    $paramarr = array();
-
-    $qparam = " Where token=? ";
-    $paramarr[$arrcount] = $token;
-
-    $signout_date = date("Y-m-d H:i:s");
-
-    //$qparam = $qparam . " and expireson >=? ";
-    //$paramarr[$arrcount + 1] = $signout_date;
-
-
-    $SELECT_query = "SELECT * From tokens " . $qparam;
-
-    $resultrow = PDO_FetchRow($SELECT_query, $paramarr);
+if (isset($token) && !empty($token)) {
+    $paramarr = array($token);
+    $SELECT_query = "SELECT * From tokens Where token=?";
+    $resultrow = null;
+    try {
+        $resultrow = PDO_FetchRow($SELECT_query, $paramarr);
+    } catch (\Exception $e) {}
 
     if ($resultrow != null) {
+        // Check session expiration if expireson is present
+        if (!empty($resultrow['expireson']) && strtotime($resultrow['expireson']) < time()) {
+            $q->token = "";
+            $q->result = 0;
+            $q->msg = 'Session expired. Please login again.';
+            header("HTTP/1.1 401 Unauthorized");
+            echo json_encode($q);
+            exit;
+        }
         $username = $resultrow['username'];
     } else {
-        $q->token = "";
-        $q->result = 0;
-        $q->msg = 'login again';
-        header("HTTP/1.1 401 Unauthorized");
-        echo json_encode($q);
-        exit;
+        // Also check adminusers table for dynamic tokens
+        $adminrow = null;
+        try {
+            $adminrow = PDO_FetchRow("SELECT username, token_expires FROM adminusers WHERE token = ? AND status = 'Active'", [$token]);
+        } catch (\Exception $e) {}
+
+        if ($adminrow != null) {
+            if (!empty($adminrow['token_expires']) && strtotime($adminrow['token_expires']) < time()) {
+                $q->token = "";
+                $q->result = 0;
+                $q->msg = 'Session expired. Please login again.';
+                header("HTTP/1.1 401 Unauthorized");
+                echo json_encode($q);
+                exit;
+            }
+            $username = $adminrow['username'];
+        } else {
+            $q->token = "";
+            $q->result = 0;
+            $q->msg = 'Invalid or expired session. Please login again.';
+            header("HTTP/1.1 401 Unauthorized");
+            echo json_encode($q);
+            exit;
+        }
     }
-	}
 } else if (isset($_POST['token']) && $_POST['token'] != "") {
 
     $qparam = '';
@@ -435,6 +446,16 @@ if($routename=="deleteadminuser")
         $q->result = 0;
         $q->message = "Invalid user ID";
     }
+}
+
+if($routename=="adminlogout" || $routename=="logout")
+{
+    if (!empty($token)) {
+        try { PDO_Execute("DELETE FROM tokens WHERE token=?", [$token]); } catch (\Exception $e) {}
+        try { PDO_Execute("UPDATE adminusers SET token=NULL, token_expires=NULL WHERE token=?", [$token]); } catch (\Exception $e) {}
+    }
+    $q->result = 1;
+    $q->message = "Logged out successfully";
 }
 
 if($routename=="userrights")

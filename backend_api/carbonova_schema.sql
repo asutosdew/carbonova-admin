@@ -63,3 +63,19 @@ INSERT INTO `adminusers` (`name`, `username`, `email`, `password`, `role`, `stat
 ('Support Executive', 'support', 'support@carbonovaworld.com', 'admin123', 'Support Admin', 'Active'),
 ('Reporting User', 'viewer', 'viewer@carbonovaworld.com', 'admin123', 'Viewer', 'Active')
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
+
+-- 6. Dynamic Admin Session Tokens Table
+CREATE TABLE IF NOT EXISTS `tokens` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `token` VARCHAR(100) NOT NULL UNIQUE,
+  `username` VARCHAR(50) NOT NULL,
+  `expireson` DATETIME DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`token`),
+  INDEX (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Migration to add token columns on existing adminusers table:
+-- ALTER TABLE `adminusers` ADD COLUMN IF NOT EXISTS `token` VARCHAR(100) DEFAULT NULL AFTER `status`;
+-- ALTER TABLE `adminusers` ADD COLUMN IF NOT EXISTS `token_expires` DATETIME DEFAULT NULL AFTER `token`;
+
