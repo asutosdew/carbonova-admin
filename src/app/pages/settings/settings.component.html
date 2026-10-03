@@ -1,1 +1,132 @@
-<app-page-header eyebrow="System" title="Settings" description="Configure core administration preferences for the farmer network."/><section class="panel"><h3>General Settings</h3><div class="grid"><label>Platform Name<input [(ngModel)]="company"></label><label>Support Email<input [(ngModel)]="email"></label></div><div class="switch"><div><b>Member Approval Required</b><small>New farmer registrations remain pending until an administrator approves them.</small></div><input type="checkbox" [(ngModel)]="approval"></div><button>Save Settings</button></section>
+<app-page-header 
+  eyebrow="System Security & Platform" 
+  title="Settings" 
+  description="Configure core administration preferences and two-factor authentication security for admin roles."/>
+
+<div class="settings-wrapper">
+  <!-- 1. GENERAL SETTINGS -->
+  <section class="panel">
+    <h3>General Platform Settings</h3>
+    <div class="grid">
+      <label>Platform Name
+        <input [(ngModel)]="company">
+      </label>
+      <label>Support Email
+        <input [(ngModel)]="email">
+      </label>
+    </div>
+    <div class="switch">
+      <div>
+        <b>Member Approval Required</b>
+        <small>New farmer registrations remain pending until an administrator approves them.</small>
+      </div>
+      <input type="checkbox" [(ngModel)]="approval">
+    </div>
+    <button class="save-btn">Save Platform Settings</button>
+  </section>
+
+  <!-- 2. TWO-FACTOR AUTHENTICATION (GOOGLE AUTHENTICATOR) -->
+  <section class="panel twofa-panel">
+    <div class="panel-header">
+      <div class="twofa-brand">
+        <div class="icon-wrap">🛡️</div>
+        <div>
+          <h3>Two-Factor Authentication (2FA)</h3>
+          <p>Protect your Admin account with time-based dynamic OTP codes using <b>Google Authenticator</b> or <b>Microsoft Authenticator</b>.</p>
+        </div>
+      </div>
+      <span class="badge" [class.badge-active]="is2faEnabled" [class.badge-inactive]="!is2faEnabled">
+        {{ is2faEnabled ? '● 2FA Active' : '○ 2FA Inactive' }}
+      </span>
+    </div>
+
+    <!-- Alert Messages -->
+    <div class="alert alert-success" *ngIf="twofaMessage">{{ twofaMessage }}</div>
+    <div class="alert alert-error" *ngIf="twofaError">{{ twofaError }}</div>
+
+    <!-- State A: 2FA is currently ENABLED -->
+    <div class="twofa-status-card enabled" *ngIf="is2faEnabled && !settingUp2fa">
+      <div class="status-content">
+        <div class="check-icon">✓</div>
+        <div>
+          <b>Your Account is Strongly Protected</b>
+          <p>Every login requires your password plus the 6-digit rolling code generated on your phone's Authenticator app.</p>
+        </div>
+      </div>
+      <button class="btn-disable" (click)="disable2fa()" [disabled]="twofaLoading">
+        {{ twofaLoading ? 'Processing...' : 'Disable 2FA' }}
+      </button>
+    </div>
+
+    <!-- State B: 2FA is currently DISABLED -->
+    <div class="twofa-status-card disabled" *ngIf="!is2faEnabled && !settingUp2fa">
+      <div class="status-content">
+        <div class="warn-icon">⚠️</div>
+        <div>
+          <b>Two-Factor Authentication is Not Enabled</b>
+          <p>We strongly recommend activating Google Authenticator to prevent unauthorized access to farmer finances and system settings.</p>
+        </div>
+      </div>
+      <button class="btn-enable" (click)="startSetup2fa()" [disabled]="twofaLoading">
+        {{ twofaLoading ? 'Generating QR...' : 'Enable Google Authenticator' }}
+      </button>
+    </div>
+
+    <!-- State C: 2FA SETUP MODAL / CARD -->
+    <div class="setup-box" *ngIf="settingUp2fa">
+      <div class="setup-header">
+        <h4>Setup Google Authenticator in 3 Easy Steps</h4>
+        <button class="btn-close" (click)="closeSetupModal()">×</button>
+      </div>
+
+      <div class="setup-steps">
+        <!-- Step 1 -->
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-desc">
+            <b>Get the App</b>
+            <p>Install <b>Google Authenticator</b> (or Microsoft Authenticator) from Google Play Store or Apple App Store on your smartphone.</p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-desc">
+            <b>Scan QR Code</b>
+            <p>Open the Authenticator app, tap <b>+</b> and scan this QR code:</p>
+            <div class="qr-container" *ngIf="qrCodeUrl">
+              <img [src]="qrCodeUrl" alt="Google Authenticator QR Code" class="qr-image">
+            </div>
+            <div class="manual-key" *ngIf="secretKey">
+              <span>Can't scan? Enter key manually:</span>
+              <code>{{ secretKey }}</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-desc">
+            <b>Verify 6-Digit Code</b>
+            <p>Enter the 6-digit verification code currently displaying in your Authenticator app to confirm setup:</p>
+            <div class="verify-form">
+              <input 
+                type="text" 
+                maxlength="6" 
+                [(ngModel)]="confirmCode" 
+                placeholder="000000" 
+                class="code-input"
+                (keyup.enter)="confirm2fa()">
+              <button class="btn-confirm" (click)="confirm2fa()" [disabled]="twofaLoading || confirmCode.length < 6">
+                {{ twofaLoading ? 'Verifying...' : 'Verify & Activate 2FA' }}
+              </button>
+              <button class="btn-cancel" (click)="closeSetupModal()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

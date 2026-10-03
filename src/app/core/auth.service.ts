@@ -64,7 +64,7 @@ export class AuthService {
     return 'Super Admin';
   }
 
-  login(userId: string, password: string): Observable<{ success: boolean; message?: string }> {
+  login(userId: string, password: string): Observable<{ success: boolean; requires_2fa?: boolean; temp_token?: string; message?: string; user?: any }> {
     const cleanUser = (userId || '').trim();
     const cleanPass = (password || '').trim();
 
@@ -84,7 +84,18 @@ export class AuthService {
 
     return this.http.post<any>(this.loginApiUrl, body.toString(), { headers }).pipe(
       map(res => {
-        // If live API returns success (result === 1 or status === 1 or status === 'success')
+        // Step 1: Check if server demands Two-Factor Authentication
+        if (res && res.requires_2fa === true && res.temp_token) {
+          return {
+            success: false,
+            requires_2fa: true,
+            temp_token: res.temp_token,
+            user: res.user,
+            message: res.message || 'Please enter the 6-digit code from Google Authenticator.'
+          };
+        }
+
+        // Step 2: If live API returns direct success (2FA was disabled or not required)
         if (res && (res.result === 1 || res.status === 1 || res.status === 'success' || res.token)) {
           const userData = res.user || res.data || res;
           const token = res.token || res.admin_token || userData.token;
@@ -138,6 +149,95 @@ export class AuthService {
           message: err?.error?.message || err?.message || 'Unable to connect to admin login API.'
         });
       })
+    );
+  }
+
+  verify2fa(tempToken: string, code: string): Observable<{ success: boolean; message?: string }> {
+    const cleanCode = (code || '').trim();
+    if (!cleanCode || cleanCode.length !== 6) {
+      return of({ success: false, message: 'Please enter a valid 6-digit Authenticator code.' });
+    }
+
+    const body = new HttpParams()
+      .set('action', 'verify_2fa')
+      .set('temp_token', tempToken)
+      .set('code', cleanCode)
+      .set('totp_code', cleanCode);
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/x-www-form-urlencoded'
+    });
+
+    return this.http.post<any>(this.loginApiUrl, body.toString(), { headers }).pipe(
+      map(res => {
+        if (res && (res.result === 1 || res.status === 1) && (res.token || res.admin_token)) {
+          const userData = res.user || {};
+          const token = res.token || res.admin_token;
+          const rawRole = userData.role || 'Super Admin';
+          const assignedRole = this.normalizeRole(rawRole);
+          const user: AdminUser = {
+            id: Number(userData.id || 1),
+            name: userData.name || (assignedRole + ' User'),
+            username: userData.username || 'admin',
+            email: userData.email || 'admin@carbonovaworld.com',
+            role: assignedRole,
+            status: 'Active'
+          };
+          this.setSession(token, user);
+          return { success: true };
+        }
+        return {
+          success: false,
+          message: res?.message || 'Invalid 6-digit code. Please check your Authenticator app.'
+        };
+      }),
+      catchError(err => of({
+        success: false,
+        message: err?.error?.message || err?.message || 'Failed to verify Authenticator code.'
+      }))
+    );
+  }
+
+  setup2fa(): Observable<{ success: boolean; secret?: string; qr_code_url?: string; otpauth_url?: string; message?: string }> {
+    return this.postAdminApi('setup_2fa').pipe(
+      map((res: any) => ({
+        success: res?.result === 1,
+        secret: res?.secret,
+        qr_code_url: res?.qr_code_url,
+        otpauth_url: res?.otpauth_url,
+        message: res?.message
+      })),
+      catchError(err => of({ success: false, message: err?.message || 'Failed to initialize 2FA setup' }))
+    );
+  }
+
+  confirm2fa(code: string): Observable<{ success: boolean; message?: string }> {
+    return this.postAdminApi('confirm_2fa', [{ code: code.trim(), totp_code: code.trim() }]).pipe(
+      map((res: any) => ({
+        success: res?.result === 1,
+        message: res?.message || (res?.result === 1 ? 'Google Authenticator enabled successfully' : 'Invalid verification code')
+      })),
+      catchError(err => of({ success: false, message: err?.message || 'Failed to confirm 2FA code' }))
+    );
+  }
+
+  disable2fa(): Observable<{ success: boolean; message?: string }> {
+    return this.postAdminApi('disable_2fa').pipe(
+      map((res: any) => ({
+        success: res?.result === 1,
+        message: res?.message || 'Two-factor authentication disabled'
+      })),
+      catchError(err => of({ success: false, message: err?.message || 'Failed to disable 2FA' }))
+    );
+  }
+
+  get2faStatus(): Observable<{ success: boolean; two_factor_enabled?: boolean }> {
+    return this.postAdminApi('status_2fa').pipe(
+      map((res: any) => ({
+        success: res?.result === 1,
+        two_factor_enabled: !!res?.two_factor_enabled
+      })),
+      catchError(() => of({ success: true, two_factor_enabled: false }))
     );
   }
 

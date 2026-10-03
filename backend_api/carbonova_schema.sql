@@ -159,5 +159,21 @@ INSERT INTO `order_shipping` (`order_id`, `recipient_name`, `phone`, `address`, 
 (1003, 'TANIYA SANDILYA', '9179883344', 'Main Market Road, Durg', 'Durg', 'Chhattisgarh', '491001', 'Transport', 'VRL Logistics', 'VRL-9921045', 'DELIVERED'),
 (1004, 'Pankaj Kumar Biswas', '9425211990', 'Village Post Raigarh, Civil Lines', 'Raigarh', 'Chhattisgarh', '496001', 'Courier', 'Delhivery', '', 'PENDING')
 ON DUPLICATE KEY UPDATE `recipient_name`=VALUES(`recipient_name`);
+-- ==============================================================================
+-- 7. Two-Factor Authentication (Google Authenticator TOTP) Support
+-- ==============================================================================
+ALTER TABLE `adminusers`
+  ADD COLUMN IF NOT EXISTS `two_factor_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `two_factor_secret` VARCHAR(64) NULL,
+  ADD COLUMN IF NOT EXISTS `two_factor_confirmed` TINYINT(1) NOT NULL DEFAULT 0;
 
-
+CREATE TABLE IF NOT EXISTS `admin_2fa_temp` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `temp_token` VARCHAR(100) NOT NULL UNIQUE,
+  `user_id` INT NOT NULL,
+  `secret` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`temp_token`),
+  INDEX (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

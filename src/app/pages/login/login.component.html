@@ -4,26 +4,74 @@
       <div class="mark">CW</div>
       <div><b>Carbonova<span>World</span></b><small>Admin Console</small></div>
     </div>
-    <div class="head">
-      <span>Administration</span>
-      <h1>Welcome Back</h1>
-      <p>Manage farmers, packages, payments and the Carbonova World network.</p>
-    </div>
 
-    <div class="error" *ngIf="error">{{error}}</div>
-
-    <form (ngSubmit)="submit()">
-      <label>User ID</label>
-      <input [(ngModel)]="u" name="u" required placeholder="Enter User ID or Email">
-
-      <label>Password</label>
-      <div class="pass">
-        <input [type]="show ? 'text' : 'password'" [(ngModel)]="p" name="p" required placeholder="Enter Password">
-        <button type="button" (click)="show = !show">{{show ? 'Hide' : 'Show'}}</button>
+    <!-- STEP 1: USERNAME & PASSWORD -->
+    <ng-container *ngIf="step === 'credentials'">
+      <div class="head">
+        <span>Administration</span>
+        <h1>Welcome Back</h1>
+        <p>Manage farmers, packages, payments and the Carbonova World network.</p>
       </div>
 
-      <a class="forgot" href="#!">Forgot Password?</a>
-      <button type="submit" [disabled]="loading">{{loading ? 'Verifying Credentials...' : 'Login'}} <span *ngIf="!loading">→</span></button>
-    </form>
+      <div class="error" *ngIf="error">{{error}}</div>
+
+      <form (ngSubmit)="submit()">
+        <label>User ID / Email</label>
+        <input [(ngModel)]="u" name="u" required placeholder="Enter User ID or Email" autocomplete="username">
+
+        <label>Password</label>
+        <div class="pass">
+          <input [type]="show ? 'text' : 'password'" [(ngModel)]="p" name="p" required placeholder="Enter Password" autocomplete="current-password">
+          <button type="button" (click)="show = !show">{{show ? 'Hide' : 'Show'}}</button>
+        </div>
+
+        <a class="forgot" href="#!">Forgot Password?</a>
+        <button type="submit" [disabled]="loading">{{loading ? 'Verifying Credentials...' : 'Login'}} <span *ngIf="!loading">→</span></button>
+      </form>
+    </ng-container>
+
+    <!-- STEP 2: TWO-FACTOR AUTHENTICATION (GOOGLE AUTHENTICATOR) -->
+    <ng-container *ngIf="step === '2fa'">
+      <div class="head">
+        <div class="twofa-icon">🛡️</div>
+        <span>Two-Factor Security</span>
+        <h1>Authenticator Code</h1>
+        <p>Open your <b>Google Authenticator</b> app on your phone and enter the 6-digit code.</p>
+      </div>
+
+      <div class="user-chip" *ngIf="userPreview">
+        <span>Admin User:</span> <b>{{userPreview.name || u}}</b> ({{userPreview.role || 'Admin'}})
+      </div>
+
+      <div class="error" *ngIf="error">{{error}}</div>
+
+      <form (ngSubmit)="submit2fa()">
+        <label>6-Digit Security Code</label>
+        <div class="totp-input-wrap">
+          <input 
+            type="text" 
+            [(ngModel)]="totpCode" 
+            name="totpCode" 
+            required 
+            maxlength="6" 
+            pattern="[0-9]*" 
+            inputmode="numeric" 
+            placeholder="000 000" 
+            class="totp-input" 
+            (ngModelChange)="onCodeChange()"
+            autofocus
+            autocomplete="one-time-code">
+        </div>
+        <small class="hint">⏱️ Codes refresh automatically every 30 seconds</small>
+
+        <button type="submit" class="verify-btn" [disabled]="loading || totpCode.length < 6">
+          {{loading ? 'Validating Code...' : 'Verify & Enter Console'}} <span *ngIf="!loading">✓</span>
+        </button>
+
+        <button type="button" class="back-btn" (click)="backToCredentials()" [disabled]="loading">
+          ← Back to Login
+        </button>
+      </form>
+    </ng-container>
   </div>
 </div>

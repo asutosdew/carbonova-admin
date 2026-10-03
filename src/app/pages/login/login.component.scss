@@ -8,3 +8,100 @@ table td b,.table td b{font-size:13px !important;}
 table td small,.table td small{font-size:11px !important;line-height:1.4 !important;}
 table td em,.table td em{font-size:11px !important;}
 table td button,.table td button{font-size:11px !important;}
+
+/* Two-Factor Authentication (2FA) Styles */
+.twofa-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  background: #eaf3ed;
+  border: 1px solid #c7dece;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.user-chip {
+  background: #f1f5f2;
+  border: 1px solid #d4e0d6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #274533;
+  text-align: center;
+  margin-bottom: 14px;
+  span {
+    color: #637769;
+  }
+}
+
+.totp-input-wrap {
+  margin: 6px 0 4px;
+}
+
+.totp-input {
+  text-align: center !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  letter-spacing: 8px !important;
+  font-family: monospace, monospace !important;
+  color: #1a3c27 !important;
+  border: 2px solid #315b3d !important;
+  background: #fdfdfc !important;
+  box-shadow: 0 4px 14px rgba(49, 91, 61, 0.08) !important;
+  height: 56px !important;
+  border-radius: 10px !important;
+  &:focus {
+    border-color: #1c6633 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(49, 91, 61, 0.2) !important;
+  }
+}
+
+.hint {
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  color: #7b887f;
+  margin: 6px 0 18px;
+}
+
+.verify-btn {
+  width: 100%;
+  height: 51px;
+  border: 0;
+  border-radius: 8px;
+  background: #235233 !important;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  &:hover:not(:disabled) {
+    background: #194025 !important;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.back-btn {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #d0d9d2;
+  border-radius: 8px;
+  background: transparent;
+  color: #55675c;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.15s ease;
+  &:hover {
+    background: #f0f4f1;
+    color: #203d2b;
+  }
+}
+

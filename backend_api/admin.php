@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+require_once "totp_helper.php";
 $watoken="60b124c17d90093bbe5e839d";//"60cf1ca446bfb88148ec771f";
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     header("HTTP/1.1 200");
@@ -2803,6 +2804,70 @@ if($routename=="formarplantslist")
                                  ORDER BY fp.rowid DESC LIMIT 200");
     }
     $q->result = 1;
+}
+
+// ==============================================================================
+// GOOGLE AUTHENTICATOR (TOTP) 2FA CONFIGURATION ROUTES
+// ==============================================================================
+
+// 9. Setup 2FA - Generate QR Code & Secret
+if($routename=="setup_2fa")
+{
+    $targetUser = !empty($data['username']) ? $data['username'] : $username;
+    $secret = CarbonovaTOTP::generateSecret();
+    
+    // Save generated secret (unconfirmed until user enters verification code)
+    PDO_Execute("UPDATE adminusers SET two_factor_secret = ?, two_factor_confirmed = 0 WHERE username = ?", [$secret, $targetUser]);
+    
+    $otpAuthUrl = CarbonovaTOTP::getOtpAuthUrl("Carbonova Admin", $targetUser, $secret);
+    $qrCodeUrl = CarbonovaTOTP::getQrCodeUrl("Carbonova Admin", $targetUser, $secret);
+    
+    $q->result = 1;
+    $q->secret = $secret;
+    $q->otpauth_url = $otpAuthUrl;
+    $q->qr_code_url = $qrCodeUrl;
+}
+
+// 10. Confirm 2FA - Verify initial 6-digit code and activate 2FA
+if($routename=="confirm_2fa")
+{
+    $targetUser = !empty($data['username']) ? $data['username'] : $username;
+    $code = trim($data['code'] ?? $data['totp_code'] ?? '');
+    
+    $userRow = PDO_FetchRow("SELECT two_factor_secret FROM adminusers WHERE username = ?", [$targetUser]);
+    
+    if ($userRow && !empty($userRow['two_factor_secret'])) {
+        $valid = CarbonovaTOTP::verifyCode($userRow['two_factor_secret'], $code, 1);
+        if ($valid) {
+            PDO_Execute("UPDATE adminusers SET two_factor_enabled = 1, two_factor_confirmed = 1 WHERE username = ?", [$targetUser]);
+            $q->result = 1;
+            $q->message = "Google Authenticator 2FA enabled successfully!";
+        } else {
+            $q->result = 0;
+            $q->message = "Invalid 6-digit verification code. Please check your Authenticator app and try again.";
+        }
+    } else {
+        $q->result = 0;
+        $q->message = "2FA setup secret not found. Please click 'Setup 2FA' again.";
+    }
+}
+
+// 11. Disable 2FA
+if($routename=="disable_2fa")
+{
+    $targetUser = !empty($data['username']) ? $data['username'] : $username;
+    PDO_Execute("UPDATE adminusers SET two_factor_enabled = 0, two_factor_confirmed = 0, two_factor_secret = NULL WHERE username = ?", [$targetUser]);
+    $q->result = 1;
+    $q->message = "Google Authenticator 2FA has been disabled.";
+}
+
+// 12. Check 2FA Status
+if($routename=="status_2fa")
+{
+    $targetUser = !empty($data['username']) ? $data['username'] : $username;
+    $userRow = PDO_FetchRow("SELECT IFNULL(two_factor_enabled, 0) as enabled, IFNULL(two_factor_confirmed, 0) as confirmed FROM adminusers WHERE username = ?", [$targetUser]);
+    $q->result = 1;
+    $q->two_factor_enabled = ($userRow && $userRow['enabled'] == 1 && $userRow['confirmed'] == 1);
 }
 
 echo json_encode($q);
