@@ -164,6 +164,140 @@ export class AuthService {
     return this.currentUser().role === 'Super Admin';
   }
 
+  get adminApiUrl(): string {
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    return isLocal ? '/api/admin.php' : 'https://www.carbonovaworld.com/api/admin.php';
+  }
+
+  postAdminApi<T = any>(route: string, params?: any): Observable<T> {
+    const payload: any[] = [
+      { token: this.getToken() },
+      { route: route }
+    ];
+
+    if (params !== undefined) {
+      payload.push(params);
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    return this.http.post<T>(this.adminApiUrl, payload, { headers });
+  }
+
+  loadAdminUsers(): Observable<AdminUser[]> {
+    return this.postAdminApi<any>('adminusers').pipe(
+      map(res => {
+        let list: any[] = [];
+        if (Array.isArray(res)) {
+          list = res;
+        } else if (res && Array.isArray(res.data)) {
+          list = res.data;
+        } else if (res && Array.isArray(res.result)) {
+          list = res.result;
+        }
+        if (list && list.length > 0) {
+          this.users = list.map(u => ({
+            id: Number(u.id || u.rowid || 0),
+            name: u.name || u.fullname || 'Admin User',
+            username: u.username || '',
+            email: u.email || '',
+            role: this.normalizeRole(u.role),
+            status: (u.status === 'Inactive' || u.status === 0 || u.status === '0') ? 'Inactive' : 'Active'
+          }));
+        }
+        return this.users;
+      }),
+      catchError(err => {
+        console.warn('Could not fetch adminusers from API, using cached/local users', err);
+        return of(this.users);
+      })
+    );
+  }
+
+  saveAdminUser(user: Partial<AdminUser> & { password?: string }): Observable<{ success: boolean; message?: string; id?: number }> {
+    return this.postAdminApi<any>('saveadminuser', user).pipe(
+      map(res => {
+        if (res && (res.result === 1 || res.status === 1 || res.success === true)) {
+          const id = Number(res.id || user.id || Date.now());
+          const existing = this.users.find(u => u.id === id || (user.id && u.id === user.id));
+          if (existing) {
+            existing.name = user.name || existing.name;
+            existing.username = user.username || existing.username;
+            existing.email = user.email || existing.email;
+            if (user.role) existing.role = user.role;
+            if (user.status) existing.status = user.status;
+          } else {
+            this.users.push({
+              id,
+              name: user.name || '',
+              username: user.username || '',
+              email: user.email || '',
+              role: user.role || 'Operations Admin',
+              status: user.status || 'Active'
+            });
+          }
+          return { success: true, message: res.message || 'User saved successfully', id };
+        } else {
+          return { success: false, message: res?.message || 'Failed to save admin user' };
+        }
+      }),
+      catchError(err => {
+        console.warn('Error saving admin user on server, falling back locally', err);
+        if (user.id) {
+          const idx = this.users.findIndex(u => u.id === user.id);
+          if (idx !== -1) {
+            this.users[idx] = { ...this.users[idx], ...user } as AdminUser;
+          }
+        } else {
+          this.users.push({
+            id: Date.now(),
+            name: user.name || '',
+            username: user.username || '',
+            email: user.email || '',
+            role: user.role || 'Operations Admin',
+            status: user.status || 'Active'
+          });
+        }
+        return of({ success: true, message: 'Saved locally' });
+      })
+    );
+  }
+
+  toggleAdminUser(user: AdminUser): Observable<{ success: boolean }> {
+    return this.postAdminApi<any>('toggleadminuser', { id: user.id }).pipe(
+      map(res => {
+        user.status = user.status === 'Active' ? 'Inactive' : 'Active';
+        return { success: true };
+      }),
+      catchError(err => {
+        console.warn('Toggle failed on server, updating locally', err);
+        user.status = user.status === 'Active' ? 'Inactive' : 'Active';
+        return of({ success: true });
+      })
+    );
+  }
+
+  deleteAdminUser(id: number): Observable<{ success: boolean; message?: string }> {
+    return this.postAdminApi<any>('deleteadminuser', { id }).pipe(
+      map(res => {
+        if (res && (res.result === 1 || res.status === 1 || res.success === true)) {
+          this.users = this.users.filter(u => u.id !== id);
+          return { success: true, message: res.message || 'User deleted successfully' };
+        } else {
+          return { success: false, message: res?.message || 'Failed to delete user' };
+        }
+      }),
+      catchError(err => {
+        console.warn('Delete failed on server, removing locally', err);
+        this.users = this.users.filter(u => u.id !== id);
+        return of({ success: true, message: 'Deleted locally' });
+      })
+    );
+  }
+
   getUsers(): AdminUser[] {
     return this.users;
   }

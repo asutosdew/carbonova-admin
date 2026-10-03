@@ -366,7 +366,75 @@ if($routename=="removebooster")
 
 if($routename=="adminusers")
 {
-    $q->data=PDO_FetchAll("select * from adminusers");
+    $q->data = PDO_FetchAll("SELECT id, name, username, email, role, status, created_at FROM adminusers ORDER BY id ASC");
+    $q->result = 1;
+}
+
+if($routename=="saveadminuser")
+{
+    $id = intval($data['id'] ?? 0);
+    $name = trim($data['name'] ?? '');
+    $username = trim($data['username'] ?? '');
+    $email = trim($data['email'] ?? '');
+    $role = trim($data['role'] ?? 'Operations Admin');
+    $status = (isset($data['status']) && ($data['status'] === 'Inactive' || $data['status'] === 0)) ? 'Inactive' : 'Active';
+    $password = trim($data['password'] ?? 'admin123');
+
+    if (empty($name) || empty($username)) {
+        $q->result = 0;
+        $q->message = "Name and Username are required.";
+    } else if ($id > 0) {
+        if (!empty($data['password'])) {
+            PDO_Execute("UPDATE adminusers SET name=?, username=?, email=?, role=?, status=?, password=? WHERE id=?",
+                [$name, $username, $email, $role, $status, $password, $id]);
+        } else {
+            PDO_Execute("UPDATE adminusers SET name=?, username=?, email=?, role=?, status=? WHERE id=?",
+                [$name, $username, $email, $role, $status, $id]);
+        }
+        $q->id = $id;
+        $q->result = 1;
+        $q->message = "User updated successfully";
+    } else {
+        $exists = PDO_FetchOne("SELECT count(*) FROM adminusers WHERE username = ?", [$username]);
+        if ($exists > 0) {
+            $q->result = 0;
+            $q->message = "Username '$username' already exists. Please choose a different username.";
+        } else {
+            PDO_Execute("INSERT INTO adminusers (name, username, email, password, role, status) VALUES (?,?,?,?,?,?)",
+                [$name, $username, $email, $password, $role, $status]);
+            $q->id = PDO_LastInsertId();
+            $q->result = 1;
+            $q->message = "Admin user created successfully";
+        }
+    }
+}
+
+if($routename=="toggleadminuser")
+{
+    $id = intval($data['id'] ?? 0);
+    if ($id > 0) {
+        PDO_Execute("UPDATE adminusers SET status = CASE WHEN status='Active' THEN 'Inactive' ELSE 'Active' END WHERE id=?", [$id]);
+        $q->result = 1;
+    } else {
+        $q->result = 0;
+        $q->message = "Invalid user ID";
+    }
+}
+
+if($routename=="deleteadminuser")
+{
+    $id = intval($data['id'] ?? 0);
+    if ($id == 1) {
+        $q->result = 0;
+        $q->message = "Primary Super Admin account cannot be deleted.";
+    } else if ($id > 0) {
+        PDO_Execute("DELETE FROM adminusers WHERE id=?", [$id]);
+        $q->result = 1;
+        $q->message = "User deleted successfully";
+    } else {
+        $q->result = 0;
+        $q->message = "Invalid user ID";
+    }
 }
 
 if($routename=="userrights")

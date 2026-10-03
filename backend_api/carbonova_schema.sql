@@ -42,3 +42,24 @@ CREATE TABLE IF NOT EXISTS `plans` (
 
 -- 4. Payment Slips / Receipts Table (If receipt image is uploaded)
 -- ALTER TABLE `payments` ADD COLUMN IF NOT EXISTS `receipt_image` VARCHAR(500) DEFAULT '' AFTER `amount`;
+
+-- 5. Admin Users & Roles Table
+CREATE TABLE IF NOT EXISTS `adminusers` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `email` VARCHAR(100) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `role` VARCHAR(50) NOT NULL DEFAULT 'Operations Admin',
+  `status` ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Initial default administrator accounts
+INSERT INTO `adminusers` (`name`, `username`, `email`, `password`, `role`, `status`) VALUES
+('System Administrator', 'admin', 'admin@carbonovaworld.com', 'admin123', 'Super Admin', 'Active'),
+('Operations Manager', 'operations', 'operations@carbonovaworld.com', 'admin123', 'Operations Admin', 'Active'),
+('Finance Manager', 'finance', 'finance@carbonovaworld.com', 'admin123', 'Finance Admin', 'Active'),
+('Support Executive', 'support', 'support@carbonovaworld.com', 'admin123', 'Support Admin', 'Active'),
+('Reporting User', 'viewer', 'viewer@carbonovaworld.com', 'admin123', 'Viewer', 'Active')
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);

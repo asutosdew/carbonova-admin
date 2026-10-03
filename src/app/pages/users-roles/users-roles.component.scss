@@ -5,5 +5,81 @@ table th,.table th{font-size:11px !important;line-height:1.4 !important;font-wei
 table td,.table td{font-size:13px !important;line-height:1.5 !important;}
 table td b,.table td b{font-size:13px !important;}
 table td small,.table td small{font-size:11px !important;line-height:1.4 !important;}
-table td em,.table td em{font-size:11px !important;}
 table td button,.table td button{font-size:11px !important;}
+
+.alert-banner {
+  padding: 11px 16px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-success {
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+}
+.alert-error {
+  background: #fce8e6;
+  color: #c5221f;
+  border: 1px solid #fad2cf;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.refresh-btn {
+  background: #f4f6f0;
+  border: 1px solid #d2d8cb;
+  color: #2e4d36;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background: #e2e8dc;
+  }
+}
+.loading-state {
+  padding: 30px;
+  text-align: center;
+  color: #6a796e;
+  font-size: 13px;
+}
+.action-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn-edit {
+  border: 1px solid #b7c7b0;
+  background: #f7faf5;
+  color: #2b5536;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  &:hover {
+    background: #e7efe4;
+  }
+}
+.btn-delete {
+  border: 1px solid #f0bebe;
+  background: #fff5f5;
+  color: #b72a2a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  &:hover {
+    background: #fde8e8;
+  }
+}
+
