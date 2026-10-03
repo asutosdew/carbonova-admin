@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -12,12 +12,13 @@ import { DataService, AdminOrder, AdminOrderItem } from '../../core/data.service
   templateUrl: './shipping.component.html',
   styleUrl: './shipping.component.scss'
 })
-export class ShippingComponent {
+export class ShippingComponent implements OnInit {
   tab: 'all' | 'pending' | 'packed' | 'shipped' | 'delivered' = 'all';
   orderTypeFilter: 'ALL' | 'PACKAGE' | 'DIRECT_PRODUCT' = 'ALL';
   page = 1;
   pageSize = 10;
   search = '';
+  loading = false;
 
   // Modals
   showProcessModal = false;
@@ -47,6 +48,18 @@ export class ShippingComponent {
   shippingModes = ['Courier', 'India Post', 'Transport', 'Local Delivery', 'Self Pickup'];
 
   constructor(public d: DataService) {}
+
+  ngOnInit(): void {
+    this.loadOrders();
+  }
+
+  loadOrders(): void {
+    this.loading = true;
+    this.d.loadOrders().subscribe({
+      next: () => this.loading = false,
+      error: () => this.loading = false
+    });
+  }
 
   get baseOrders(): AdminOrder[] {
     let list = this.d.orders;
@@ -157,13 +170,17 @@ export class ShippingComponent {
       courier_name: this.processForm.courier_name,
       tracking_number: this.processForm.tracking_number,
       notes: this.processForm.notes
-    }).subscribe();
+    }).subscribe(() => {
+      this.loadOrders();
+    });
 
     this.closeProcess();
   }
 
   quickStatus(order: AdminOrder, newStatus: AdminOrder['order_status']): void {
-    this.d.updateOrderStatus(order.order_id, newStatus).subscribe();
+    this.d.updateOrderStatus(order.order_id, newStatus).subscribe(() => {
+      this.loadOrders();
+    });
   }
 
   printShippingLabel(order: AdminOrder): void {

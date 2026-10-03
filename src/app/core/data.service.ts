@@ -458,7 +458,7 @@ export class DataService {
     this.loadDirectIncome();
     this.loadLevelIncome();
     this.loadProducts();
-    this.loadOrders();
+    this.loadOrders().subscribe();
   }
 
   loadDashboard(): void {
@@ -650,22 +650,27 @@ export class DataService {
   // -------------------------------------------------------------
   // Order & Shipping Processing (driven by SQL orders & shipping)
   // -------------------------------------------------------------
-  loadOrders(): void {
-    this.postAdminApi('orderlist').subscribe({
-      next: (res: any) => {
+  loadOrders(): Observable<AdminOrder[]> {
+    return this.postAdminApi<any>('orderlist').pipe(
+      map((res: any) => {
         const list = res?.orders || res?.data;
-        if (Array.isArray(list) && list.length > 0) {
+        if (Array.isArray(list)) {
           this.orders = list;
         }
-      },
-      error: (err) => console.warn('Could not load orders from API:', err)
-    });
+        return this.orders;
+      }),
+      catchError((err) => {
+        console.warn('Could not load orders from API, keeping fallback:', err);
+        return of(this.orders);
+      })
+    );
   }
 
   updateOrderStatus(orderId: number, status: AdminOrder['order_status']): Observable<any> {
     const o = this.orders.find(x => x.order_id === orderId);
     if (o) o.order_status = status;
     return this.postAdminApi('updateordershipping', [{ order_id: orderId, order_status: status }]).pipe(
+      tap(() => this.loadOrders().subscribe()),
       catchError(() => of({ success: true }))
     );
   }
@@ -687,6 +692,7 @@ export class DataService {
       }
     }
     return this.postAdminApi('updateordershipping', [{ order_id: orderId, ...shipping }]).pipe(
+      tap(() => this.loadOrders().subscribe()),
       catchError(() => of({ success: true }))
     );
   }

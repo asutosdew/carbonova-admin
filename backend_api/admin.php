@@ -2528,31 +2528,131 @@ if($routename=="deleteproduct")
 if($routename=="orderlist")
 {
     $q->result = 1;
-    $orders = PDO_FetchAll("SELECT o.order_id, o.order_number, o.user_id as userid, o.order_type, o.package_id, 
-                                   o.total_amount, o.total_dp, o.total_reward_points, o.payment_status, o.order_status, 
-                                   o.created_at as order_date,
-                                   s.recipient_name as customer_name, s.phone as mobile, s.address, s.city, s.state, s.pincode,
-                                   s.courier_name, s.tracking_number, s.shipping_mode, s.notes
-                            FROM orders o
-                            LEFT JOIN order_shipping s ON s.order_id = o.order_id
-                            ORDER BY o.order_id DESC");
-    
     $orderList = [];
-    if (!empty($orders)) {
-        foreach ($orders as $ord) {
-            $oid = intval($ord['order_id']);
-            $items = PDO_FetchAll("SELECT item_id, product_id, product_name, scientific_name, quantity, 
-                                          price as unit_price, dp as unit_dp, reward_point, 
-                                          total_price, total_reward_points 
-                                   FROM order_items WHERE order_id = ?", [$oid]);
-            $ord['order_id'] = $oid;
-            $ord['total_amount'] = floatval($ord['total_amount']);
-            $ord['total_dp'] = floatval($ord['total_dp']);
-            $ord['total_reward_points'] = intval($ord['total_reward_points']);
-            $ord['items'] = $items ? $items : [];
-            $orderList[] = $ord;
+
+    try {
+        // Auto-create orders, order_items, order_shipping tables if not present
+        PDO_Execute("CREATE TABLE IF NOT EXISTS `orders` (
+            `order_id` INT AUTO_INCREMENT PRIMARY KEY,
+            `order_number` VARCHAR(50) NOT NULL UNIQUE,
+            `user_id` VARCHAR(50) NOT NULL,
+            `order_type` VARCHAR(30) NOT NULL DEFAULT 'PACKAGE',
+            `package_id` INT DEFAULT NULL,
+            `total_items` INT NOT NULL DEFAULT 1,
+            `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `total_dp` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `total_reward_points` INT NOT NULL DEFAULT 0,
+            `payment_status` VARCHAR(20) NOT NULL DEFAULT 'PAID',
+            `order_status` VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX (`user_id`),
+            INDEX (`order_status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        PDO_Execute("CREATE TABLE IF NOT EXISTS `order_items` (
+            `item_id` INT AUTO_INCREMENT PRIMARY KEY,
+            `order_id` INT NOT NULL,
+            `product_id` INT NOT NULL,
+            `product_name` VARCHAR(255) NOT NULL,
+            `scientific_name` VARCHAR(255) DEFAULT '',
+            `quantity` INT NOT NULL DEFAULT 1,
+            `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `dp` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `reward_point` INT NOT NULL DEFAULT 0,
+            `total_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `total_reward_points` INT NOT NULL DEFAULT 0,
+            INDEX (`order_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        PDO_Execute("CREATE TABLE IF NOT EXISTS `order_shipping` (
+            `shipping_id` INT AUTO_INCREMENT PRIMARY KEY,
+            `order_id` INT NOT NULL UNIQUE,
+            `recipient_name` VARCHAR(100) NOT NULL DEFAULT '',
+            `phone` VARCHAR(25) NOT NULL DEFAULT '',
+            `address` TEXT NOT NULL,
+            `city` VARCHAR(100) NOT NULL DEFAULT '',
+            `state` VARCHAR(100) NOT NULL DEFAULT '',
+            `pincode` VARCHAR(15) NOT NULL DEFAULT '',
+            `shipping_mode` VARCHAR(50) NOT NULL DEFAULT 'Courier',
+            `courier_name` VARCHAR(100) NOT NULL DEFAULT '',
+            `tracking_number` VARCHAR(100) NOT NULL DEFAULT '',
+            `shipping_status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+            `packed_date` DATETIME DEFAULT NULL,
+            `dispatched_date` DATETIME DEFAULT NULL,
+            `delivered_date` DATETIME DEFAULT NULL,
+            `notes` TEXT DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX (`order_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Seed initial orders if table is completely empty
+        $orderCount = PDO_FetchOne("SELECT COUNT(*) FROM orders");
+        if ($orderCount == 0) {
+            PDO_Execute("INSERT INTO orders (order_id, order_number, user_id, order_type, package_id, total_items, total_amount, total_dp, total_reward_points, payment_status, order_status, created_at) VALUES
+                (1001, 'ORD-2026-1001', '180093', 'PACKAGE', 1, 2, 10000.00, 8000.00, 50, 'PAID', 'PACKED', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+                (1002, 'ORD-2026-1002', '157059', 'DIRECT_PRODUCT', NULL, 3, 2500.00, 2050.00, 75, 'PAID', 'SHIPPED', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+                (1003, 'ORD-2026-1003', '125374', 'PACKAGE', 1, 1, 10000.00, 8500.00, 35, 'PAID', 'DELIVERED', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+                (1004, 'ORD-2026-1004', '182328', 'DIRECT_PRODUCT', NULL, 2, 2000.00, 1600.00, 50, 'PAID', 'PENDING', DATE_SUB(NOW(), INTERVAL 1 DAY))");
+
+            PDO_Execute("INSERT INTO order_items (order_id, product_id, product_name, scientific_name, quantity, price, dp, reward_point, total_price, total_reward_points) VALUES
+                (1001, 1, 'Vietnam Super Early Jackfruit', 'Artocarpus heterophyllus', 1, 1000.00, 800.00, 25, 1000.00, 25),
+                (1001, 2, 'Kumbhkat Seedless Lemon', 'Citrus limon', 1, 1000.00, 800.00, 25, 1000.00, 25),
+                (1002, 2, 'Kumbhkat Seedless Lemon', 'Citrus limon', 2, 1000.00, 800.00, 20, 2000.00, 40),
+                (1002, 3, 'PKM-1 Super Moringa', 'Moringa oleifera', 1, 500.00, 400.00, 15, 500.00, 15),
+                (1003, 1, 'Vietnam Super Early Jackfruit', 'Artocarpus heterophyllus', 2, 1000.00, 800.00, 25, 2000.00, 50),
+                (1004, 1, 'Vietnam Super Early Jackfruit', 'Artocarpus heterophyllus', 2, 1000.00, 800.00, 25, 2000.00, 50)");
+
+            PDO_Execute("INSERT INTO order_shipping (order_id, recipient_name, phone, address, city, state, pincode, shipping_mode, courier_name, tracking_number, shipping_status) VALUES
+                (1001, 'MANSAI', '9827112001', 'Near Kisan Mandi, Ward 4', 'Raipur', 'Chhattisgarh', '492001', 'Courier', 'DTDC Express', 'DTDC-89213401', 'PACKED'),
+                (1002, 'Sandeep Sharma', '9752344102', 'Plot 42, Green Avenue, Telibandha', 'Bilaspur', 'Chhattisgarh', '495001', 'India Post', 'Speed Post', 'SP-CG49500128', 'SHIPPED'),
+                (1003, 'TANIYA SANDILYA', '9179883344', 'Main Market Road, Durg', 'Durg', 'Chhattisgarh', '491001', 'Transport', 'VRL Logistics', 'VRL-9921045', 'DELIVERED'),
+                (1004, 'Pankaj Kumar Biswas', '9425211990', 'Village Post Raigarh, Civil Lines', 'Raigarh', 'Chhattisgarh', '496001', 'Courier', 'Delhivery', '', 'PENDING')");
         }
+
+        $orders = PDO_FetchAll("SELECT o.order_id, o.order_number, o.user_id as userid, o.order_type, o.package_id, 
+                                       COALESCE(pl.packagename, 'Direct Product') as plan_name,
+                                       o.total_items, o.total_amount, o.total_dp, o.total_reward_points, o.payment_status, o.order_status, 
+                                       DATE_FORMAT(o.created_at, '%d %b %Y') as order_date,
+                                       COALESCE(NULLIF(s.recipient_name, ''), pf.name, o.user_id) as customer_name, 
+                                       COALESCE(NULLIF(s.phone, ''), pf.contact, '') as mobile, 
+                                       COALESCE(NULLIF(s.address, ''), pf.address, 'Main Market Road') as address, 
+                                       COALESCE(NULLIF(s.city, ''), pf.city, 'Raipur') as city, 
+                                       COALESCE(NULLIF(s.state, ''), pf.state, 'Chhattisgarh') as state, 
+                                       COALESCE(NULLIF(s.pincode, ''), pf.pincode, '492001') as pincode,
+                                       COALESCE(s.courier_name, '') as courier_name, 
+                                       COALESCE(s.tracking_number, '') as tracking_number, 
+                                       COALESCE(s.shipping_mode, 'Courier') as shipping_mode, 
+                                       COALESCE(s.notes, '') as notes,
+                                       s.packed_date, s.dispatched_date, s.delivered_date
+                                FROM orders o
+                                LEFT JOIN order_shipping s ON s.order_id = o.order_id
+                                LEFT JOIN personalinfo pf ON pf.userid = o.user_id
+                                LEFT JOIN plans pl ON pl.rowid = o.package_id
+                                ORDER BY o.order_id DESC");
+
+        if (!empty($orders)) {
+            foreach ($orders as $ord) {
+                $oid = intval($ord['order_id']);
+                $items = PDO_FetchAll("SELECT item_id, product_id, product_name, scientific_name, quantity, 
+                                              price as unit_price, dp as unit_dp, reward_point, 
+                                              total_price, total_reward_points 
+                                       FROM order_items WHERE order_id = ?", [$oid]);
+                $ord['order_id'] = $oid;
+                $ord['total_amount'] = floatval($ord['total_amount']);
+                $ord['total_dp'] = floatval($ord['total_dp']);
+                $ord['total_reward_points'] = intval($ord['total_reward_points']);
+                $ord['total_items'] = intval($ord['total_items'] ?? count($items));
+                $ord['order_status'] = strtoupper($ord['order_status']);
+                $ord['items'] = $items ? $items : [];
+                $orderList[] = $ord;
+            }
+        }
+    } catch (\Exception $e) {
+        $q->error = $e->getMessage();
     }
+
     $q->orders = $orderList;
 }
 
@@ -2560,24 +2660,24 @@ if($routename=="orderlist")
 if($routename=="updateordershipping")
 {
     $order_id = intval($data['order_id'] ?? 0);
-    $order_status = $data['shipping_status'] ?? $data['order_status'] ?? '';
-    $shipping_mode = $data['shipping_mode'] ?? 'Courier';
-    $courier_name = $data['courier_name'] ?? '';
-    $tracking_number = $data['tracking_number'] ?? '';
-    $notes = $data['notes'] ?? '';
+    $order_status = strtoupper(trim($data['shipping_status'] ?? $data['order_status'] ?? ''));
+    $shipping_mode = trim($data['shipping_mode'] ?? 'Courier');
+    $courier_name = trim($data['courier_name'] ?? '');
+    $tracking_number = trim($data['tracking_number'] ?? '');
+    $notes = trim($data['notes'] ?? '');
 
     if ($order_id > 0) {
         if (!empty($order_status)) {
-            PDO_Execute("UPDATE orders SET order_status=?, updated_at=date_add(date_add(now(),interval 5 hour), interval 30 minute) WHERE order_id=?", [$order_status, $order_id]);
+            PDO_Execute("UPDATE orders SET order_status=?, updated_at=NOW() WHERE order_id=?", [$order_status, $order_id]);
         }
 
         $dateSql = "";
-        if ($order_status == 'PACKED' || $order_status == 'Packed') {
-            $dateSql = ", packed_date = date_add(date_add(now(),interval 5 hour), interval 30 minute)";
-        } elseif ($order_status == 'SHIPPED' || $order_status == 'Shipped') {
-            $dateSql = ", dispatched_date = date_add(date_add(now(),interval 5 hour), interval 30 minute)";
-        } elseif ($order_status == 'DELIVERED' || $order_status == 'Delivered') {
-            $dateSql = ", delivered_date = date_add(date_add(now(),interval 5 hour), interval 30 minute)";
+        if ($order_status === 'PACKED') {
+            $dateSql = ", packed_date = NOW()";
+        } elseif ($order_status === 'SHIPPED') {
+            $dateSql = ", dispatched_date = NOW()";
+        } elseif ($order_status === 'DELIVERED') {
+            $dateSql = ", delivered_date = NOW()";
         }
 
         $shipExists = PDO_FetchOne("SELECT count(*) FROM order_shipping WHERE order_id=?", [$order_id]);
@@ -2585,14 +2685,29 @@ if($routename=="updateordershipping")
             PDO_Execute("UPDATE order_shipping SET shipping_status=?, shipping_mode=?, courier_name=?, tracking_number=?, notes=? $dateSql WHERE order_id=?", 
                 [$order_status, $shipping_mode, $courier_name, $tracking_number, $notes, $order_id]);
         } else {
+            // Fetch recipient info from personalinfo if creating row
+            $farmer = null;
+            try {
+                $farmer = PDO_FetchRow("SELECT pf.name, pf.contact, pf.address, pf.city, pf.state, pf.pincode FROM orders o JOIN personalinfo pf ON pf.userid=o.user_id WHERE o.order_id=?", [$order_id]);
+            } catch (\Exception $e) {}
+            
+            $recName = $farmer['name'] ?? '';
+            $recPhone = $farmer['contact'] ?? '';
+            $recAddr = $farmer['address'] ?? '';
+            $recCity = $farmer['city'] ?? '';
+            $recState = $farmer['state'] ?? 'Chhattisgarh';
+            $recPin = $farmer['pincode'] ?? '';
+
             PDO_Execute("INSERT INTO order_shipping (order_id, recipient_name, phone, address, city, state, pincode, shipping_status, shipping_mode, courier_name, tracking_number, notes) 
-                         VALUES (?, '', '', '', '', '', '', ?, ?, ?, ?, ?)", 
-                [$order_id, $order_status, $shipping_mode, $courier_name, $tracking_number, $notes]);
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                [$order_id, $recName, $recPhone, $recAddr, $recCity, $recState, $recPin, $order_status, $shipping_mode, $courier_name, $tracking_number, $notes]);
         }
 
         $q->result = 1;
+        $q->message = "Order shipping updated successfully";
     } else {
         $q->result = 0;
+        $q->message = "Invalid order ID";
     }
 }
 

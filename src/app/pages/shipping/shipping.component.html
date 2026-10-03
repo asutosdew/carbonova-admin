@@ -57,7 +57,14 @@
         <option value="DIRECT_PRODUCT">Direct Plant Purchases Only</option>
       </select>
     </div>
+    <button class="refresh-orders-btn" (click)="loadOrders()" [disabled]="loading" title="Refresh orders from database">
+      {{ loading ? '↻ Syncing...' : '↻ Refresh Orders' }}
+    </button>
   </div>
+</div>
+
+<div *ngIf="loading" class="shipping-loading-banner">
+  <span>↻</span> Fetching live orders and shipping dispatches from server...
 </div>
 
 <section class="panel">
