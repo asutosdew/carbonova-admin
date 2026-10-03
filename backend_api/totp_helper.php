@@ -1,9 +1,9 @@
 <?php
 /**
  * Carbonova World - Pure PHP Time-Based One-Time Password (TOTP) Library
- * RFC 6238 / RFC 4226 compliant
- * Compatible with Google Authenticator, Microsoft Authenticator, Authy, etc.
- * Zero external dependencies.
+ * Standard: RFC 6238 / RFC 4226 (HMAC-based & Time-based OTP)
+ * Fully compatible with Google Authenticator, Microsoft Authenticator, Authy, Apple iOS, etc.
+ * Zero external libraries or composer dependencies required.
  */
 
 class CarbonovaTOTP {
@@ -11,6 +11,9 @@ class CarbonovaTOTP {
 
     /**
      * Generate a cryptographically secure Base32 secret key (16 characters = 80 bits).
+     *
+     * @param int $length Default 16 characters
+     * @return string Base32 string
      */
     public static function generateSecret($length = 16) {
         $secret = '';
@@ -21,19 +24,27 @@ class CarbonovaTOTP {
     }
 
     /**
-     * Decode a Base32 encoded string into raw binary.
+     * Decode a Base32 encoded string into raw binary bytes.
+     *
+     * @param string $base32
+     * @return string Binary string
      */
     public static function base32Decode($base32) {
-        $base32 = strtoupper(trim($base32));
+        $base32 = strtoupper(trim(strval($base32)));
         $binary = '';
         $buffer = 0;
         $bitsLeft = 0;
         
-        for ($i = 0; $i < strlen($base32); $i++) {
+        $len = strlen($base32);
+        for ($i = 0; $i < $len; $i++) {
             $char = $base32[$i];
-            if ($char === '=' || $char === ' ' || $char === '-') continue;
+            if ($char === '=' || $char === ' ' || $char === '-') {
+                continue;
+            }
             $val = strpos(self::$base32Chars, $char);
-            if ($val === false) continue;
+            if ($val === false) {
+                continue;
+            }
             
             $buffer = ($buffer << 5) | $val;
             $bitsLeft += 5;
@@ -47,6 +58,10 @@ class CarbonovaTOTP {
 
     /**
      * Calculate 6-digit TOTP code for a specific 30-second time slice.
+     *
+     * @param string $secret Base32 secret key
+     * @param int|null $timeSlice Defaults to floor(time() / 30)
+     * @return string 6-digit zero-padded string
      */
     public static function getCode($secret, $timeSlice = null) {
         if ($timeSlice === null) {
@@ -60,7 +75,7 @@ class CarbonovaTOTP {
         // HMAC-SHA1 hash
         $hash = hash_hmac('sha1', $timeBytes, $secretKey, true);
         
-        // Dynamic truncation
+        // Dynamic truncation (RFC 4226)
         $offset = ord(substr($hash, -1)) & 0x0F;
         $unpacked = unpack('N', substr($hash, $offset, 4));
         $truncatedHash = $unpacked[1] & 0x7FFFFFFF;
@@ -73,9 +88,16 @@ class CarbonovaTOTP {
     /**
      * Verify user-submitted 6-digit code against secret.
      * $discrepancy = 1 allows +- 30 seconds clock drift.
+     *
+     * @param string $secret Base32 secret key
+     * @param string $userCode 6-digit code entered by user
+     * @param int $discrepancy Number of 30s windows to check before/after
+     * @return bool True if valid, false otherwise
      */
     public static function verifyCode($secret, $userCode, $discrepancy = 1) {
-        if (empty($secret)) return false;
+        if (empty($secret)) {
+            return false;
+        }
         $userCode = trim(strval($userCode));
         if (strlen($userCode) !== 6 || !ctype_digit($userCode)) {
             return false;
@@ -92,6 +114,11 @@ class CarbonovaTOTP {
 
     /**
      * Format standard otpauth URI.
+     *
+     * @param string $issuer Platform/App name
+     * @param string $accountName User account/email
+     * @param string $secret Base32 secret key
+     * @return string otpauth:// URI
      */
     public static function getOtpAuthUrl($issuer, $accountName, $secret) {
         $encodedIssuer = rawurlencode($issuer);
@@ -101,6 +128,11 @@ class CarbonovaTOTP {
 
     /**
      * Generate standard QR Code image URL for scanning.
+     *
+     * @param string $issuer Platform/App name
+     * @param string $accountName User account/email
+     * @param string $secret Base32 secret key
+     * @return string Direct URL to QR code image
      */
     public static function getQrCodeUrl($issuer, $accountName, $secret) {
         $otpUrl = self::getOtpAuthUrl($issuer, $accountName, $secret);
