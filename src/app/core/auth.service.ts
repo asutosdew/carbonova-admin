@@ -44,7 +44,7 @@ export class AuthService {
   get loginApiUrl(): string {
     const isLocal = typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    return isLocal ? '/api/login.php' : 'https://www.carbonovaworld.com/api/login.php';
+    return isLocal ? '/api/adminlogin.php' : 'https://www.carbonovaworld.com/api/adminlogin.php';
   }
 
   getToken(): string {
@@ -70,6 +70,8 @@ export class AuthService {
 
     const body = new HttpParams()
       .set('login', cleanUser)
+      .set('username', cleanUser)
+      .set('userid', cleanUser)
       .set('password', cleanPass);
 
     const headers = new HttpHeaders({
@@ -114,7 +116,7 @@ export class AuthService {
         };
       }),
       catchError(err => {
-        console.warn('Network error calling login.php, checking local fallback', err);
+        console.warn('Network error calling adminlogin.php, checking local fallback', err);
         const localMatch = this.users.find(u =>
           (u.username.toLowerCase() === cleanUser.toLowerCase() ||
            (cleanUser.toLowerCase() === 'superadmin' && u.username === 'admin')) &&
@@ -126,7 +128,7 @@ export class AuthService {
         }
         return of({
           success: false,
-          message: err?.error?.message || err?.message || 'Unable to connect to login API.'
+          message: err?.error?.message || err?.message || 'Unable to connect to admin login API.'
         });
       })
     );
