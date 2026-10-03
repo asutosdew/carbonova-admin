@@ -409,9 +409,7 @@ export class DataService {
   }
 
   get adminApiUrl(): string {
-    const isLocal = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    return isLocal ? '/api/admin.php' : 'https://www.carbonovaworld.com/api/admin.php';
+    return 'https://www.carbonovaworld.com/api/admin.php';
   }
 
   postAdminApi<T = any>(route: string, params?: any): Observable<T> {

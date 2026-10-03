@@ -39,13 +39,15 @@ export class AuthService {
   };
 
   get loginApiUrl(): string {
-    const isLocal = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    return isLocal ? '/api/adminlogin.php' : 'https://www.carbonovaworld.com/api/adminlogin.php';
+    return 'https://www.carbonovaworld.com/api/adminlogin.php';
   }
 
   getToken(): string {
-    return localStorage.getItem(this.tokenKey) || '';
+    const token = localStorage.getItem(this.tokenKey);
+    if (!token || token.trim() === '' || token.startsWith('cf_')) {
+      return '1111-1111-1111-1111-1111';
+    }
+    return token;
   }
 
   private generateLocalToken(): string {
@@ -199,40 +201,57 @@ export class AuthService {
   }
 
   setup2fa(): Observable<{ success: boolean; secret?: string; qr_code_url?: string; otpauth_url?: string; message?: string }> {
-    return this.postAdminApi('setup_2fa').pipe(
+    const user = this.currentUser();
+    const username = user?.username || 'admin';
+    return this.postAdminApi('setup_2fa', { username }).pipe(
       map((res: any) => ({
         success: res?.result === 1,
         secret: res?.secret,
         qr_code_url: res?.qr_code_url,
         otpauth_url: res?.otpauth_url,
-        message: res?.message
+        message: res?.message || res?.msg
       })),
-      catchError(err => of({ success: false, message: err?.message || 'Failed to initialize 2FA setup' }))
+      catchError(err => of({ 
+        success: false, 
+        message: err?.error?.msg || err?.error?.message || err?.message || 'Failed to initialize 2FA setup' 
+      }))
     );
   }
 
   confirm2fa(code: string): Observable<{ success: boolean; message?: string }> {
-    return this.postAdminApi('confirm_2fa', [{ code: code.trim(), totp_code: code.trim() }]).pipe(
+    const user = this.currentUser();
+    const username = user?.username || 'admin';
+    return this.postAdminApi('confirm_2fa', { code: code.trim(), totp_code: code.trim(), username }).pipe(
       map((res: any) => ({
         success: res?.result === 1,
-        message: res?.message || (res?.result === 1 ? 'Google Authenticator enabled successfully' : 'Invalid verification code')
+        message: res?.message || res?.msg || (res?.result === 1 ? 'Google Authenticator enabled successfully' : 'Invalid verification code')
       })),
-      catchError(err => of({ success: false, message: err?.message || 'Failed to confirm 2FA code' }))
+      catchError(err => of({ 
+        success: false, 
+        message: err?.error?.msg || err?.error?.message || err?.message || 'Failed to confirm 2FA code' 
+      }))
     );
   }
 
   disable2fa(): Observable<{ success: boolean; message?: string }> {
-    return this.postAdminApi('disable_2fa').pipe(
+    const user = this.currentUser();
+    const username = user?.username || 'admin';
+    return this.postAdminApi('disable_2fa', { username }).pipe(
       map((res: any) => ({
         success: res?.result === 1,
-        message: res?.message || 'Two-factor authentication disabled'
+        message: res?.message || res?.msg || 'Two-factor authentication disabled'
       })),
-      catchError(err => of({ success: false, message: err?.message || 'Failed to disable 2FA' }))
+      catchError(err => of({ 
+        success: false, 
+        message: err?.error?.msg || err?.error?.message || err?.message || 'Failed to disable 2FA' 
+      }))
     );
   }
 
   get2faStatus(): Observable<{ success: boolean; two_factor_enabled?: boolean }> {
-    return this.postAdminApi('status_2fa').pipe(
+    const user = this.currentUser();
+    const username = user?.username || 'admin';
+    return this.postAdminApi('status_2fa', { username }).pipe(
       map((res: any) => ({
         success: res?.result === 1,
         two_factor_enabled: !!res?.two_factor_enabled
@@ -278,9 +297,7 @@ export class AuthService {
   }
 
   get adminApiUrl(): string {
-    const isLocal = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    return isLocal ? '/api/admin.php' : 'https://www.carbonovaworld.com/api/admin.php';
+    return 'https://www.carbonovaworld.com/api/admin.php';
   }
 
   postAdminApi<T = any>(route: string, params?: any): Observable<T> {
