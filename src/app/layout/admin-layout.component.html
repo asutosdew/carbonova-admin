@@ -1,5 +1,5 @@
 <div class="shell">
-<aside class="sidebar" [class.open]="open"><div class="brand"><div class="mark">CF</div><div><b>Carbon<span>Farm</span></b><small>Admin Console</small></div><button class="close" (click)="open=false">×</button></div>
+<aside class="sidebar" [class.open]="open"><div class="brand"><div class="mark">CW</div><div><b>Carbonova<span>World</span></b><small>Admin Console</small></div><button class="close" (click)="open=false">×</button></div>
 <div class="admin-user"><div class="avatar">AD</div><div><b>{{currentUser.name}}</b><small>{{currentUser.role}}</small></div></div>
 <nav>
 <label>Overview</label><a routerLink="/dashboard" routerLinkActive="active" (click)="open=false">⌂ <span>Dashboard</span></a>
@@ -10,5 +10,5 @@
 <label>Administration</label><a *ngIf="auth.hasPermission('users-roles')" routerLink="/users-roles" routerLinkActive="active" (click)="open=false">♙ <span>Users &amp; Roles</span></a><label>System</label><a routerLink="/settings" routerLinkActive="active" (click)="open=false">⚙ <span>Settings</span></a>
 </nav><button class="logout" (click)="logout()">↪ &nbsp; Logout</button></aside>
 <div class="shade" *ngIf="open" (click)="open=false"></div>
-<section class="main"><header><button class="hamb" (click)="open=true">☰</button><div><small>Admin Console</small><strong>Carbon Farming Network</strong></div><div class="right"><span class="notify">♢<i></i></span><span class="topadmin">AD</span><div><b>{{currentUser.name}}</b><small>{{currentUser.role}}</small></div></div></header><main><router-outlet /></main></section>
+<section class="main"><header><button class="hamb" (click)="open=true">☰</button><div><small>Admin Console</small><strong>Carbonova World Network</strong></div><div class="right"><span class="notify">♢<i></i></span><span class="topadmin">AD</span><div><b>{{currentUser.name}}</b><small>{{currentUser.role}}</small></div></div></header><main><router-outlet /></main></section>
 </div>

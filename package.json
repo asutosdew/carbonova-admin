@@ -1,5 +1,5 @@
 {
-  "name": "carbon-farming-admin",
+  "name": "carbonova-world-admin",
   "version": "1.0.0",
   "scripts": {"ng":"ng","start":"ng serve","build":"ng build","watch":"ng build --watch --configuration development"},
   "private": true,

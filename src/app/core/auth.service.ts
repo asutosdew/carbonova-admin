@@ -23,11 +23,11 @@ export class AuthService {
   private readonly tokenKey = 'cf_admin_token';
 
   private users: AdminUser[] = [
-    { id: 1, name: 'System Administrator', username: 'admin', email: 'admin@carbonfarm.local', role: 'Super Admin', status: 'Active' },
-    { id: 2, name: 'Operations Manager', username: 'operations', email: 'operations@carbonfarm.local', role: 'Operations Admin', status: 'Active' },
-    { id: 3, name: 'Finance Manager', username: 'finance', email: 'finance@carbonfarm.local', role: 'Finance Admin', status: 'Active' },
-    { id: 4, name: 'Support Executive', username: 'support', email: 'support@carbonfarm.local', role: 'Support Admin', status: 'Active' },
-    { id: 5, name: 'Reporting User', username: 'viewer', email: 'viewer@carbonfarm.local', role: 'Viewer', status: 'Active' }
+    { id: 1, name: 'System Administrator', username: 'admin', email: 'admin@carbonovaworld.com', role: 'Super Admin', status: 'Active' },
+    { id: 2, name: 'Operations Manager', username: 'operations', email: 'operations@carbonovaworld.com', role: 'Operations Admin', status: 'Active' },
+    { id: 3, name: 'Finance Manager', username: 'finance', email: 'finance@carbonovaworld.com', role: 'Finance Admin', status: 'Active' },
+    { id: 4, name: 'Support Executive', username: 'support', email: 'support@carbonovaworld.com', role: 'Support Admin', status: 'Active' },
+    { id: 5, name: 'Reporting User', username: 'viewer', email: 'viewer@carbonovaworld.com', role: 'Viewer', status: 'Active' }
   ];
 
   private permissions: Record<RoleName, string[]> = {

@@ -197,7 +197,7 @@ export class ShippingComponent implements OnInit {
       `Shipping Label - ${order.order_number}`,
       `
       <div class="label">
-        <div class="brand">CARBONOVA ECO SYSTEM</div>
+        <div class="brand">CARBONOVA WORLD</div>
         <div class="subtitle">FARMER &amp; CONSUMER PLANT LOGISTICS</div>
         <div class="label-divider"></div>
 
@@ -342,7 +342,7 @@ export class ShippingComponent implements OnInit {
         </div>
 
         <div class="invoice-note">
-          Terms &amp; Conditions: Live saplings are conditioned for carbon farming. Inspect upon arrival.
+          Terms &amp; Conditions: Live saplings are conditioned for Carbonova World agroforestry. Inspect upon arrival.
           This is an electronically generated invoice valid without physical signature.
         </div>
       </div>
