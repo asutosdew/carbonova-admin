@@ -43,18 +43,23 @@ export class AuthService {
   }
 
   getToken(): string {
-    const token = localStorage.getItem(this.tokenKey);
-    if (!token || token.trim() === '' || token.startsWith('cf_')) {
-      return '1111-1111-1111-1111-1111';
+    let token = localStorage.getItem(this.tokenKey);
+    if (!token || token.trim() === '' || token === '1111-1111-1111-1111-1111') {
+      token = this.generateDynamicToken();
+      localStorage.setItem(this.tokenKey, token);
     }
     return token;
   }
 
-  private generateLocalToken(): string {
+  generateDynamicToken(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return 'cf_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 15);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 
   private normalizeRole(val: any): RoleName {
@@ -100,9 +105,9 @@ export class AuthService {
         // Step 2: If live API returns direct success (2FA was disabled or not required)
         if (res && (res.result === 1 || res.status === 1 || res.status === 'success' || res.token)) {
           const userData = res.user || res.data || res;
-          const token = res.token || res.admin_token || userData.token;
-          if (!token) {
-            return { success: false, message: 'No authentication token received from server.' };
+          let token = res.token || res.admin_token || userData.token;
+          if (!token || token === '1111-1111-1111-1111-1111') {
+            token = this.generateDynamicToken();
           }
           const rawRole = userData.role || userData.usertype || userData.role_name || res.role || res.usertype;
           const assignedRole = this.normalizeRole(rawRole);
@@ -126,7 +131,7 @@ export class AuthService {
           u.status === 'Active'
         );
         if (localMatch && (cleanPass === 'admin123' || cleanPass === 'password')) {
-          this.setSession(this.generateLocalToken(), localMatch);
+          this.setSession(this.generateDynamicToken(), localMatch);
           return { success: true };
         }
 
@@ -143,7 +148,7 @@ export class AuthService {
           u.status === 'Active'
         );
         if (localMatch && cleanPass) {
-          this.setSession(this.generateLocalToken(), localMatch);
+          this.setSession(this.generateDynamicToken(), localMatch);
           return of({ success: true });
         }
         return of({
@@ -174,7 +179,10 @@ export class AuthService {
       map(res => {
         if (res && (res.result === 1 || res.status === 1) && (res.token || res.admin_token)) {
           const userData = res.user || {};
-          const token = res.token || res.admin_token;
+          let token = res.token || res.admin_token;
+          if (!token || token === '1111-1111-1111-1111-1111') {
+            token = this.generateDynamicToken();
+          }
           const rawRole = userData.role || 'Super Admin';
           const assignedRole = this.normalizeRole(rawRole);
           const user: AdminUser = {
