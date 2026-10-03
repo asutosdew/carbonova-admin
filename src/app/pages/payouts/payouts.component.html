@@ -1,1 +1,248 @@
-<app-page-header eyebrow="Finance" title="Payout Summary" description="View every farmer's balance, eligible payout and pending amount in one place."/><div class="summary"><div><span>Total Farmer Balance</span><b>₹61,250</b></div><div><span>Eligible Payout</span><b>₹60,950</b></div><div><span>Pending / Review</span><b>₹2,600</b></div></div><section class="panel"><div class="head"><div><span>Farmer Payouts</span><h3>Payout Summary</h3></div><button>Export Summary</button></div><div class="table"><table><thead><tr><th>Farmer</th><th>Total Balance</th><th>Eligible</th><th>Pending</th><th>Status</th><th>Action</th></tr></thead><tbody><tr *ngFor="let x of pagedPayouts"><td><b>{{x.name}}</b><small>{{x.farmer}}</small></td><td>₹{{x.balance | number}}</td><td class="amount">₹{{x.eligible | number}}</td><td>₹{{x.pending | number}}</td><td><em [class.review]="x.status==='Review'">{{x.status}}</em></td><td><button class="review">View Account</button></td></tr></tbody></table></div><app-pagination [page]="page" [pageSize]="pageSize" [total]="d.payouts.length" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination></section>
+<app-page-header 
+  eyebrow="Finance & Accounts" 
+  title="Payout Summary" 
+  description="Day-wise consolidated summary of Direct, Level, and Matrix incomes with user-wise filters and export."
+/>
+
+<!-- KPI Stats Summary Cards -->
+<div class="summary-cards">
+  <div class="card total">
+    <span>Total Payout</span>
+    <b>₹{{totalPayoutSum | number:'1.2-2'}}</b>
+    <small>Combined Direct, Level & Matrix</small>
+  </div>
+  <div class="card direct">
+    <span>Direct Income</span>
+    <b>₹{{totalDirectSum | number:'1.2-2'}}</b>
+    <small>Sponsor referral earnings</small>
+  </div>
+  <div class="card level">
+    <span>Level Income</span>
+    <b>₹{{totalLevelSum | number:'1.2-2'}}</b>
+    <small>Multi-level network bonuses</small>
+  </div>
+  <div class="card matrix">
+    <span>Matrix Income</span>
+    <b>₹{{totalMatrixSum | number:'1.2-2'}}</b>
+    <small>Autopool position earnings</small>
+  </div>
+  <div class="card records">
+    <span>Active Records</span>
+    <b>{{totalItemsCount}}</b>
+    <small>Filtered daywise entries</small>
+  </div>
+</div>
+
+<!-- Controls Panel -->
+<section class="panel">
+  <!-- Top Bar: View Mode, Search, Export -->
+  <div class="panel-header">
+    <div class="header-left">
+      <div class="view-switcher">
+        <button type="button" [class.active]="viewMode === 'user_daywise'" (click)="viewMode = 'user_daywise'; page = 1">
+          👤 User-wise Day Breakdown
+        </button>
+        <button type="button" [class.active]="viewMode === 'daily_consolidated'" (click)="viewMode = 'daily_consolidated'; page = 1">
+          📅 Daily Consolidated
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button type="button" class="btn-export" (click)="exportCSV()">
+        <span>📥</span> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Bar: User Dropdown, Date Pickers, Quick Presets -->
+  <div class="filter-bar">
+    <!-- User Filter Dropdown -->
+    <div class="filter-item user-filter">
+      <label>Farmer / User Filter</label>
+      <select [(ngModel)]="selectedUser" (change)="onUserChange()">
+        <option value="">All Farmers / Users ({{userList.length}})</option>
+        <option *ngFor="let u of userList" [value]="u.id">
+          {{u.id}} — {{u.name}}
+        </option>
+      </select>
+    </div>
+
+    <!-- Date Range Filter: From & To -->
+    <div class="filter-item date-filter">
+      <label>From Date</label>
+      <input type="date" [(ngModel)]="fromDate" (change)="onDateChange()">
+    </div>
+
+    <div class="filter-item date-filter">
+      <label>To Date</label>
+      <input type="date" [(ngModel)]="toDate" (change)="onDateChange()">
+    </div>
+
+    <!-- Quick Date Presets -->
+    <div class="filter-item presets-filter">
+      <label>Quick Presets</label>
+      <div class="preset-buttons">
+        <button type="button" [class.active]="activePreset === 'all'" (click)="setPreset('all')">All</button>
+        <button type="button" [class.active]="activePreset === 'today'" (click)="setPreset('today')">Today</button>
+        <button type="button" [class.active]="activePreset === '7days'" (click)="setPreset('7days')">7 Days</button>
+        <button type="button" [class.active]="activePreset === 'month'" (click)="setPreset('month')">Month</button>
+      </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="filter-item search-filter">
+      <label>Search Keyword</label>
+      <input type="text" [(ngModel)]="searchTerm" placeholder="Search ID, name, date...">
+    </div>
+
+    <!-- Reset Filters Button -->
+    <div class="filter-item reset-filter">
+      <label>&nbsp;</label>
+      <button type="button" class="btn-reset" (click)="resetFilters()" title="Reset all filters">
+        ✕ Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Table View 1: User-wise Day Breakdown -->
+  <div class="table-wrap" *ngIf="viewMode === 'user_daywise'">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Farmer ID</th>
+          <th>Farmer Name</th>
+          <th class="text-right">Direct Income</th>
+          <th class="text-right">Level Income</th>
+          <th class="text-right">Matrix Income</th>
+          <th class="text-right">Total Payout</th>
+          <th class="text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of pagedItems">
+          <td class="date-cell">
+            <strong>{{row.date}}</strong>
+          </td>
+          <td class="id-cell">
+            <span class="user-badge">#{{row.userId}}</span>
+          </td>
+          <td class="name-cell">
+            <b>{{row.userName}}</b>
+          </td>
+          <td class="text-right font-mono">
+            <span [class.text-muted]="row.directIncome === 0">₹{{row.directIncome | number:'1.2-2'}}</span>
+          </td>
+          <td class="text-right font-mono">
+            <span [class.text-muted]="row.levelIncome === 0">₹{{row.levelIncome | number:'1.2-2'}}</span>
+          </td>
+          <td class="text-right font-mono">
+            <span [class.text-muted]="row.matrixIncome === 0">₹{{row.matrixIncome | number:'1.2-2'}}</span>
+          </td>
+          <td class="text-right total-cell font-mono">
+            <strong>₹{{row.totalPayout | number:'1.2-2'}}</strong>
+          </td>
+          <td class="text-center">
+            <em class="status-badge" [class.pending]="row.status === 'Pending'">
+              {{row.status}}
+            </em>
+          </td>
+        </tr>
+
+        <!-- Empty State -->
+        <tr *ngIf="filteredUserDaywise.length === 0">
+          <td colspan="8" class="empty-state">
+            <div class="empty-box">
+              <span class="empty-icon">🔍</span>
+              <h4>No payout records found</h4>
+              <p>Try adjusting your date range or user filter criteria.</p>
+              <button type="button" (click)="resetFilters()">Clear Filters</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+
+      <!-- Footer Totals -->
+      <tfoot *ngIf="filteredUserDaywise.length > 0">
+        <tr>
+          <td colspan="3"><strong>Summary Total (Filtered)</strong></td>
+          <td class="text-right"><strong>₹{{totalDirectSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right"><strong>₹{{totalLevelSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right"><strong>₹{{totalMatrixSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right total-cell"><strong>₹{{totalPayoutSum | number:'1.2-2'}}</strong></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Table View 2: Daily Consolidated -->
+  <div class="table-wrap" *ngIf="viewMode === 'daily_consolidated'">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th class="text-center">Earning Farmers</th>
+          <th class="text-right">Total Direct Income</th>
+          <th class="text-right">Total Level Income</th>
+          <th class="text-right">Total Matrix Income</th>
+          <th class="text-right">Grand Daily Payout</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of pagedDailyConsolidated">
+          <td class="date-cell">
+            <strong>{{row.date}}</strong>
+          </td>
+          <td class="text-center">
+            <span class="user-badge">{{row.totalFarmers}} Farmers</span>
+          </td>
+          <td class="text-right font-mono">
+            ₹{{row.directIncome | number:'1.2-2'}}
+          </td>
+          <td class="text-right font-mono">
+            ₹{{row.levelIncome | number:'1.2-2'}}
+          </td>
+          <td class="text-right font-mono">
+            ₹{{row.matrixIncome | number:'1.2-2'}}
+          </td>
+          <td class="text-right total-cell font-mono">
+            <strong>₹{{row.totalPayout | number:'1.2-2'}}</strong>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredDailyConsolidated.length === 0">
+          <td colspan="6" class="empty-state">
+            <div class="empty-box">
+              <span class="empty-icon">🔍</span>
+              <h4>No daily consolidated records found</h4>
+              <p>Try adjusting your date range.</p>
+              <button type="button" (click)="resetFilters()">Clear Filters</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+
+      <tfoot *ngIf="filteredDailyConsolidated.length > 0">
+        <tr>
+          <td><strong>Summary Total</strong></td>
+          <td></td>
+          <td class="text-right"><strong>₹{{totalDirectSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right"><strong>₹{{totalLevelSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right"><strong>₹{{totalMatrixSum | number:'1.2-2'}}</strong></td>
+          <td class="text-right total-cell"><strong>₹{{totalPayoutSum | number:'1.2-2'}}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination 
+    [page]="page" 
+    [pageSize]="pageSize" 
+    [total]="totalItemsCount" 
+    (pageChange)="onPageChange($event)" 
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+</section>

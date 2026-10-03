@@ -585,6 +585,46 @@ if($routename=="payoutsummary")
 	$q->result=1;
 }
 
+if($routename=="daywisepayoutsummary")
+{
+    $userid = isset($data['userid']) ? trim($data['userid']) : '';
+    $from_date = isset($data['from_date']) ? trim($data['from_date']) : '';
+    $to_date = isset($data['to_date']) ? trim($data['to_date']) : '';
+
+    $where = " WHERE 1=1 ";
+    $params = [];
+
+    if (!empty($userid)) {
+        $where .= " AND uli.userid = ? ";
+        $params[] = $userid;
+    }
+    if (!empty($from_date)) {
+        $where .= " AND DATE(uli.doa) >= ? ";
+        $params[] = $from_date;
+    }
+    if (!empty($to_date)) {
+        $where .= " AND DATE(uli.doa) <= ? ";
+        $params[] = $to_date;
+    }
+
+    $sql = "SELECT DATE(uli.doa) as payout_date,
+                   uli.userid,
+                   ifnull(pf.name, concat('Farmer ', uli.userid)) as user_name,
+                   SUM(CASE WHEN uli.level = 1 THEN uli.amount ELSE 0 END) as direct_income,
+                   SUM(CASE WHEN uli.level > 1 THEN uli.amount ELSE 0 END) as level_income,
+                   0 as matrix_income,
+                   SUM(uli.amount) as total_payout,
+                   'Credited' as status
+            FROM userlevelincome uli
+            LEFT JOIN personalinfo pf ON pf.userid = uli.userid
+            $where
+            GROUP BY DATE(uli.doa), uli.userid, pf.name
+            ORDER BY payout_date DESC, total_payout DESC";
+
+    $q->data = PDO_FetchAll($sql, $params);
+    $q->result = 1;
+}
+
 if($routename=="binarypayout")
 {
 	extract($data);

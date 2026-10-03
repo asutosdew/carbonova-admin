@@ -19,6 +19,9 @@ export interface Farmer {
 
 export interface Income {
   date: string;
+  rawDate?: string;
+  userId?: string;
+  userName?: string;
   farmer: string;
   source: string;
   level: string;
@@ -126,9 +129,32 @@ export class DataService {
   farmers: Farmer[] = [];
   packages: Package[] = [];
   payments: PaymentItem[] = [];
-  direct: Income[] = [];
-  level: Income[] = [];
-  matrix: Income[] = [];
+  direct: Income[] = [
+    { date: '02 Oct 2026', rawDate: '2026-10-02', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1000, status: 'Credited' },
+    { date: '01 Oct 2026', rawDate: '2026-10-01', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1200, status: 'Credited' },
+    { date: '30 Sep 2026', rawDate: '2026-09-30', userId: '125374', userName: 'TANIYA SANDILYA', farmer: '125374 (TANIYA SANDILYA)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1000, status: 'Credited' },
+    { date: '29 Sep 2026', rawDate: '2026-09-29', userId: '182328', userName: 'Pankaj Kumar Biswas', farmer: '182328 (Pankaj Kumar Biswas)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1500, status: 'Credited' },
+    { date: '28 Sep 2026', rawDate: '2026-09-28', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1000, status: 'Credited' },
+    { date: '27 Sep 2026', rawDate: '2026-09-27', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Direct Sponsor', level: 'Direct (L1)', amount: 1000, status: 'Credited' }
+  ];
+
+  level: Income[] = [
+    { date: '02 Oct 2026', rawDate: '2026-10-02', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Level 2 Income', level: 'L2', amount: 500, status: 'Credited' },
+    { date: '01 Oct 2026', rawDate: '2026-10-01', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Level 3 Income', level: 'L3', amount: 350, status: 'Credited' },
+    { date: '30 Sep 2026', rawDate: '2026-09-30', userId: '125374', userName: 'TANIYA SANDILYA', farmer: '125374 (TANIYA SANDILYA)', source: 'Level 2 Income', level: 'L2', amount: 600, status: 'Credited' },
+    { date: '29 Sep 2026', rawDate: '2026-09-29', userId: '182328', userName: 'Pankaj Kumar Biswas', farmer: '182328 (Pankaj Kumar Biswas)', source: 'Level 4 Income', level: 'L4', amount: 450, status: 'Credited' },
+    { date: '28 Sep 2026', rawDate: '2026-09-28', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Level 2 Income', level: 'L2', amount: 400, status: 'Credited' },
+    { date: '27 Sep 2026', rawDate: '2026-09-27', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Level 3 Income', level: 'L3', amount: 300, status: 'Credited' }
+  ];
+
+  matrix: Income[] = [
+    { date: '02 Oct 2026', rawDate: '2026-10-02', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Matrix Position', level: 'M-01', amount: 2500, status: 'Credited' },
+    { date: '01 Oct 2026', rawDate: '2026-10-01', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Matrix Position', level: 'M-02', amount: 2800, status: 'Credited' },
+    { date: '30 Sep 2026', rawDate: '2026-09-30', userId: '125374', userName: 'TANIYA SANDILYA', farmer: '125374 (TANIYA SANDILYA)', source: 'Matrix Position', level: 'M-01', amount: 3100, status: 'Credited' },
+    { date: '29 Sep 2026', rawDate: '2026-09-29', userId: '182328', userName: 'Pankaj Kumar Biswas', farmer: '182328 (Pankaj Kumar Biswas)', source: 'Matrix Position', level: 'M-03', amount: 3400, status: 'Credited' },
+    { date: '28 Sep 2026', rawDate: '2026-09-28', userId: '180093', userName: 'MANSAI', farmer: '180093 (MANSAI)', source: 'Matrix Position', level: 'M-01', amount: 2500, status: 'Credited' },
+    { date: '27 Sep 2026', rawDate: '2026-09-27', userId: '157059', userName: 'Sandeep Sharma', farmer: '157059 (Sandeep Sharma)', source: 'Matrix Position', level: 'M-02', amount: 2800, status: 'Credited' }
+  ];
   payouts: PayoutItem[] = [];
 
   // Live products list matching SQL products table
@@ -497,6 +523,9 @@ export class DataService {
         if (res && Array.isArray(res.data) && res.data.length > 0) {
           this.direct = res.data.map((d: any) => ({
             date: this.formatDate(d.doa),
+            rawDate: d.doa || '',
+            userId: String(d.userid || ''),
+            userName: d.name || '',
             farmer: d.userid + (d.name ? ` (${d.name})` : ''),
             source: `Direct Sponsor (From ${d.new_userid})`,
             level: `Direct (L${d.level || 1})`,
@@ -515,6 +544,9 @@ export class DataService {
         if (res && Array.isArray(res.data) && res.data.length > 0) {
           this.level = res.data.map((d: any) => ({
             date: this.formatDate(d.doa),
+            rawDate: d.doa || '',
+            userId: String(d.userid || ''),
+            userName: d.name || '',
             farmer: d.userid + (d.name ? ` (${d.name})` : ''),
             source: `Level ${d.level} Income (From ${d.new_userid})`,
             level: `L${d.level || 1}`,
@@ -808,6 +840,9 @@ export class DataService {
       .slice(0, 10)
       .map((f, i) => ({
         date: f.joined,
+        rawDate: f.joined,
+        userId: f.id,
+        userName: f.name,
         farmer: `${f.id} (${f.name})`,
         source: 'Matrix Position',
         level: `M-0${(i % 3) + 1}`,

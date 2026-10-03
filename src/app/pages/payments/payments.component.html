@@ -1,1 +1,36 @@
-<app-page-header eyebrow="Finance" title="Payment Management" description="Review package payments and approve verified farmer transactions."/><div class="summary"><div><span>Today's Payments</span><b>₹45,000</b></div><div><span>Pending Approval</span><b>₹10,000</b></div><div><span>Approved</span><b>₹35,000</b></div></div><section class="panel"><div class="head"><div><span>Payment Ledger</span><h3>Package Payments</h3></div></div><div class="table"><table><thead><tr><th>Date</th><th>Reference</th><th>Farmer</th><th>Package</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody><tr *ngFor="let x of pagedPayments"><td>{{x.date}}</td><td>{{x.ref}}</td><td>{{x.farmer}}</td><td>{{x.package}}</td><td class="amount">₹{{x.amount | number}}</td><td><em [class.pending]="x.status==='Pending'">{{x.status}}</em></td><td><button *ngIf="x.status==='Pending'" class="approve" (click)="approve(x)">Approve</button><span *ngIf="x.status!=='Pending'" class="done">✓</span></td></tr></tbody></table></div><app-pagination [page]="page" [pageSize]="pageSize" [total]="d.payments.length" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination></section>
+<app-page-header eyebrow="Finance" title="Payment Management" description="Review verified package payments and farmer transactions."/>
+<div class="summary">
+  <div><span>Today's Payments</span><b>₹45,000</b></div>
+  <div><span>Pending Verification</span><b>₹10,000</b></div>
+  <div><span>Approved Payments</span><b>₹35,000</b></div>
+</div>
+<section class="panel">
+  <div class="head">
+    <div><span>Payment Ledger</span><h3>Package Payments</h3></div>
+  </div>
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Reference</th>
+          <th>Farmer</th>
+          <th>Package</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let x of pagedPayments">
+          <td>{{x.date}}</td>
+          <td>{{x.ref}}</td>
+          <td>{{x.farmer}}</td>
+          <td>{{x.package}}</td>
+          <td class="amount">₹{{x.amount | number}}</td>
+          <td><em [class.pending]="x.status==='Pending'">{{x.status}}</em></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="d.payments.length" (pageChange)="onPageChange($event)" (pageSizeChange)="onPageSizeChange($event)"></app-pagination>
+</section>

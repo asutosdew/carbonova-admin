@@ -17,6 +17,8 @@ export const routes: Routes = [
       { path: 'level-income', component: LevelIncomeComponent },
       { path: 'matrix-income', component: MatrixIncomeComponent },
       { path: 'payouts', component: PayoutsComponent },
+      { path: 'payout-summary', redirectTo: 'payouts' },
+      { path: 'payoutsummary', redirectTo: 'payouts' },
       { path: 'accounts', component: AccountsComponent },
       { path: 'transactions', component: TransactionsComponent },
       { path: 'users-roles', component: UsersRolesComponent },
